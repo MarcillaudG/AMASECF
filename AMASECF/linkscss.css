@@ -1,0 +1,19 @@
+node {
+	size: 10px, 15px;
+	fill-color: black;
+	stroke-mode: plain;
+	text-alignment:under;
+}
+
+
+
+node.AGFunction{
+	size : 20px, 30 px;
+	fill-color:blue;
+	shape: circle;
+}
+
+node.Variable{
+	fill-color:green;
+	shape:triangle;
+}

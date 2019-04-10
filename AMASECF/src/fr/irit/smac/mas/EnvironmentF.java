@@ -1,10 +1,14 @@
 package fr.irit.smac.mas;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import fr.irit.smac.amak.Environment;
 import fr.irit.smac.amak.Scheduling;
@@ -60,6 +64,8 @@ public class EnvironmentF extends Environment{
 	 * Keys type variable, value list of all variable of the type
 	 */
 	private Map<String,Set<String>> all_variables;
+	
+	private Map<String,Pair<Double,Double>> variables_limits;
 
 	private Random r;
 
@@ -74,17 +80,18 @@ public class EnvironmentF extends Environment{
 
 
 	private void init() {
-		this.speeds = new TreeMap<String,Double>();
-		this.lengths = new TreeMap<String,Double>();
-		this.capacities = new TreeMap<String,Double>();
-		this.flows = new TreeMap<String,Double>();
 
 		this.variables = new TreeMap<String,Double>();
 		this.all_variables = new TreeMap<String,Set<String>>();
+		this.variables_limits = new TreeMap<String,Pair<Double,Double>>();
 
 		this.r = new Random();
 		switch(this.expe) {
 		case LPD:
+			this.speeds = new TreeMap<String,Double>();
+			this.lengths = new TreeMap<String,Double>();
+			this.capacities = new TreeMap<String,Double>();
+			this.flows = new TreeMap<String,Double>();
 
 			for(int i = 0 ; i < NB_AGENTS_MAX;i++) {
 				this.lengths.put("L"+i, 0.0);
@@ -107,8 +114,12 @@ public class EnvironmentF extends Environment{
 				String type = "Type"+i;
 				this.all_variables.put(type,new TreeSet<String>());
 				for(int j = 0; j < NB_VARIABLE_MAX/NB_TYPES_VARIABLES; j++) {
-					this.variables.put(type+"v"+i,0.0);
+					this.variables.put(type+"v"+j,0.0);
+					this.all_variables.get(type).add(type+"v"+j);
 				}
+				double min = r.nextInt(200);
+				double max = r.nextInt(200) + min+ 20;
+				this.variables_limits.put(type, Pair.of(min, max));
 			}
 			break;
 		default:
@@ -148,7 +159,14 @@ public class EnvironmentF extends Environment{
 			}
 			break;
 		case RANDOM:
-			
+			for(String type : this.all_variables.keySet()) {
+				for(String variable : this.all_variables.get(type)) {
+					double min = this.variables_limits.get(type).getLeft();
+					double max = this.variables_limits.get(type).getRight();
+					double value = r.nextDouble() *(max-min)+min;
+					this.variables.put(variable, value);
+				}
+			}
 			break;
 		default:
 			break;
@@ -161,6 +179,11 @@ public class EnvironmentF extends Environment{
 
 	public Set<String> getVariables() {
 		return variables.keySet();
+	}
+	
+
+	public Set<String> getAllVariables() {
+		return this.all_variables.keySet();
 	}
 
 
@@ -185,6 +208,33 @@ public class EnvironmentF extends Environment{
 
 	public Map<String, Double> getFlows() {
 		return flows;
+	}
+
+	public Double getValueOfVariable(String s) {
+		return this.variables.get(s);
+	}
+	
+	public Expe getExpe() {
+		return this.expe;
+	}
+	
+	public String getTypeFromVariable(String variable) {
+		String res = "";
+		boolean found = false;
+		List<String> tmp = new ArrayList<String>(this.all_variables.keySet());
+		int i = 0;
+		while(!found) {
+			if(this.all_variables.get(tmp.get(i)).contains(variable)) {
+				found = true;
+				res = tmp.get(i);
+			}
+			i++;
+			// TODO change in throw exception
+			if(i > NB_TYPES_VARIABLES+2)
+				System.out.println("ERROR : BOUCLE INFINI");
+		}
+		
+		return res;
 	}
 
 

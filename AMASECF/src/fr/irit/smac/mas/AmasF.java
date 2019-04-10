@@ -1,7 +1,14 @@
 package fr.irit.smac.mas;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -11,12 +18,14 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import fr.irit.smac.amak.Agent;
 import fr.irit.smac.amak.Amas;
+import fr.irit.smac.amak.Configuration;
 import fr.irit.smac.amak.Scheduling;
 import fr.irit.smac.functions.OracleFunction;
 import fr.irit.smac.lxplot.LxPlot;
 import fr.irit.smac.lxplot.commons.ChartType;
 import fr.irit.smac.lxplot.server.LxPlotChart;
 import fr.irit.smac.mas.EnvironmentF.Expe;
+import fr.irit.smac.visu.LinksFileReader;
 
 public class AmasF extends Amas<EnvironmentF>{
 
@@ -30,24 +39,66 @@ public class AmasF extends Amas<EnvironmentF>{
 	//private List<String> parameters;
 
 	private Map<String,Double> parameters;
+	
+	private Map<String,Double> network;
+	
+	private Map<String,Double> parameterTypeNeeded;
 
-	private List<AGFunction> allAGFunctions;
+	private Map<String,AGFunction> allAGFunctions;
+	
+	private Set<String> parametersUseful;
+	
+	private Set<String> parametersUsefulLastCycle;
 
 	private Random r = new Random();
+	
+	private Set<String> typesOfParametersNeeded;
+	
+	private File fileLinks;
+	
+	private FileWriter writer;
+	
 
 	public AmasF(EnvironmentF environment, Scheduling scheduling, Object[] params) {
 		super(environment, scheduling, params);
-
-		init();
+		this.fileLinks = new File("linksexpe.txt");
+			try {
+				this.writer = new FileWriter(this.fileLinks);
+			} catch (IOException e) {
+				System.err.println("ERROR WRITER");
+			}
+		switch(environment.getExpe()) {
+		case LPD:
+			initLPD();
+			break;
+		case RANDOM:
+			try {
+				initRandom();
+			} catch (IOException e) {
+				System.err.println("ERROR INIT");
+			}
+			break;
+		default:
+			break;
+		
+		}
+	}
+	
+	@Override
+	protected void onInitialConfiguration() {
+		super.onInitialConfiguration();
+		Configuration.executionPolicy = ExecutionPolicy.TWO_PHASES;
 	}
 
-
-	private void init() {
+	/**
+	 * Initialisation when using the LPD function
+	 */
+	private void initLPD() {
 		this.oracle = new TreeMap<String,OracleFunction>();
 		//this.parameters = new ArrayList<String>();
-		this.allAGFunctions = new ArrayList<AGFunction>();
+		this.allAGFunctions = new TreeMap<String,AGFunction>();
 		this.parameters = new TreeMap<String, Double>();
-
+		
 		// Initialization of parameter
 		for(int i = 0; i < NB_PARAMETER_MAX; i++) {
 			//this.parameters.add("param"+i);
@@ -56,7 +107,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		for(int i = 0; i < EnvironmentF.NB_AGENTS_MAX; i++) {
 			String name = "function "+i;
 			//Creation of the oracle function and the corresponding agent
-			this.allAGFunctions.add(new AGFunction(this, params, name));
+			this.allAGFunctions.put(name,new AGFunction(this, params, name));
 
 
 
@@ -89,7 +140,7 @@ public class AmasF extends Amas<EnvironmentF>{
 
 
 		// Initialization of the AGFunction parameter
-		for(AGFunction ag : this.allAGFunctions) {
+		for(AGFunction ag : this.allAGFunctions.values()) {
 			OracleFunction of = this.oracle.get(ag.getName());
 			ag.setLength(of.getParametersI(0));
 			ag.setSpeed(of.getParametersI(1));
@@ -102,28 +153,103 @@ public class AmasF extends Amas<EnvironmentF>{
 				ag.addDataPerceived(of.getParametersI(i));
 			}
 		}
-		System.out.println("END INIT");
-		/*for(int i = 0; i < this.allAGFunctions.size(); i++) {
-			System.out.println(this.allAGFunctions.get(i));
-			System.out.println(this.oracle.get(this.allAGFunctions.get(i).getName()));
-		}*/
 	}
 
+	/**
+	 * Initialisation when using the sum function
+	 * @throws IOException 
+	 */
+	private void initRandom() throws IOException {
+		// init of collection
+		this.oracle = new TreeMap<String,OracleFunction>();
+		this.allAGFunctions = new TreeMap<String,AGFunction>();
+		this.parameterTypeNeeded = new TreeMap<String,Double>();
+		this.parametersUsefulLastCycle = new TreeSet<String>();
+		
+		
+		List<String> variablestmp = new ArrayList<String>(this.environment.getVariables());
+		System.out.println("SIZE : "+ variablestmp.size());
+		this.writer.write("Entities : \n");
+		for(int i = 0; i < EnvironmentF.NB_AGENTS_MAX; i++) {
+			String name = "function"+i;
+			//Creation of the oracle function and the corresponding agent
+			AGFunction agf = new AGFunction(this, params, name);
+
+			this.writer.write("AGFunction," + name + "\n");
+			
+			OracleFunction of = new OracleFunction(name);
+			
+			// Initialization of parameters of function
+			
+			//Parameters fixes
+			this.writer.write("Fixes : {\n");
+			for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j++) {
+				String variable = variablestmp.remove(r.nextInt(variablestmp.size()));
+				of.addParametersFixe(variable);
+				agf.addParameterFixe(variable);
+				
+				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
+				
+			}
+			this.writer.write("}\n");
+
+			this.writer.write("Variables : {\n");
+			//Parameters variables
+			List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
+			variablesRemaining.removeAll(of.getParametersFixes());
+			for(int j = 0; j < EnvironmentF.NB_VARIABLES_VARIABLES; j++) {
+				String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
+				of.addParametersVariable(variable);
+				agf.addParameterVariable(variable);
+				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
+			}
+			this.writer.write("}\n");
+
+			this.oracle.put(name,of);
+			this.allAGFunctions.put(name,agf);
+			
+		}
+		this.writer.write("EXPE\n");
+	}
+	
 	@Override
 	protected void onSystemCycleBegin() {
 		// Values of the parameters for this cycle
 		this.environment.update();
+		this.typesOfParametersNeeded = new TreeSet<String>();
+		this.network = new TreeMap<String,Double>();
+		this.parametersUseful = new TreeSet<String>();
+		
 
 		// Give the parameters to the oracle
-		for(OracleFunction of : this.oracle.values()) {
-			of.reinit();
-			of.setLength(this.environment.getLengths().get(of.getParameters().get(0)));
-			of.setSpeed(this.environment.getSpeeds().get(of.getParameters().get(1)));
-			of.setC(this.environment.getCapacities().get(of.getParameters().get(2)));
-			for(int i = 3; i < of.getParameters().size(); i++) {
-				String s = of.getParameters().get(i);
-				of.addFlow(this.environment.getFlows().get(s));
+		switch(this.environment.getExpe()) {
+		case LPD:
+			for(OracleFunction of : this.oracle.values()) {
+				of.reinit();
+				of.setLength(this.environment.getLengths().get(of.getParameters().get(0)));
+				of.setSpeed(this.environment.getSpeeds().get(of.getParameters().get(1)));
+				of.setC(this.environment.getCapacities().get(of.getParameters().get(2)));
+				for(int i = 3; i < of.getParameters().size(); i++) {
+					String s = of.getParameters().get(i);
+					of.addFlow(this.environment.getFlows().get(s));
+				}
 			}
+			break;
+		case RANDOM:
+			try {
+				this.writer.write("Cycle : "+this.getCycle()+"\n");
+			} catch (IOException e) {
+				System.err.println("ERROR CYCLE\n");
+			}
+			for(OracleFunction of : this.oracle.values()) {
+				for(String s : of.getAllParameters()) {
+					of.setValueOfVariable(s, this.environment.getValueOfVariable(s));
+				}
+			}
+			break;
+		default:
+			break;
+		
 		}
 	}
 
@@ -131,12 +257,48 @@ public class AmasF extends Amas<EnvironmentF>{
 	@Override
 	protected void onSystemCycleEnd() {
 		if(this.getCycle() > 1) {
-			for(AGFunction agf : this.allAGFunctions) {
-				OracleFunction of = this.oracle.get(agf.getName());
-				//LxPlot.getChart(agf.getName()).add("Agent",this.getCycle(), of.compute());
-				//LxPlot.getChart(agf.getName()).add("Oracle",this.getCycle(),agf.compute());
-				LxPlot.getChart(agf.getName(), ChartType.LINE, 20).add("Oracle",this.getCycle(), of.compute());
-				LxPlot.getChart(agf.getName(), ChartType.LINE, 20).add("Agent",this.getCycle(), agf.compute());
+			switch(this.environment.getExpe()) {
+			case LPD:
+				for(AGFunction agf : this.allAGFunctions.values()) {
+					OracleFunction of = this.oracle.get(agf.getName());
+					LxPlot.getChart(agf.getName()).add("Agent",this.getCycle(), of.computeLPD());
+					LxPlot.getChart(agf.getName()).add("Oracle",this.getCycle(),agf.computeLPD());
+				}
+				break;
+			case RANDOM:
+				for(AGFunction agf : this.allAGFunctions.values()) {
+					OracleFunction of = this.oracle.get(agf.getName());
+					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Oracle",this.getCycle(), of.computeSum());
+					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Agent",this.getCycle(), agf.computeSum());
+				}
+				this.parametersUsefulLastCycle = new TreeSet<String>();
+				this.parametersUsefulLastCycle.addAll(this.parametersUseful);
+				try {
+					this.writer.write("END Cycle\n");
+				} catch (IOException e) {
+					System.err.println("ERROR END CYCLE");
+				}
+				
+				//System.out.println(this.parametersUsefulLastCycle);
+				/*System.out.println("CYCLE : "+this.cycle);
+				for(String s : this.allAGFunctions.get("function 0").getParameterAndValue().keySet()) {
+					if(this.allAGFunctions.get("function 0").getParameterAndValue().get(s) == 0.0) {
+						System.out.println("MISSING VARIABLE : "+s);
+					}
+				}*/
+				break;
+			default:
+				break;
+			
+			}
+		}
+		if(this.getCycle() == 50) {
+			try {
+				this.writer.close();
+				this.getScheduler().stop();
+				new LinksFileReader("linksexpe.txt");
+			} catch (IOException e) {
+				System.err.println("ERROR Close");
 			}
 		}
 	}
@@ -150,17 +312,11 @@ public class AmasF extends Amas<EnvironmentF>{
 	}
 
 
-	public static void main(String args[]) {
-
-		AmasF amas = new AmasF(new EnvironmentF(Scheduling.DEFAULT, args, Expe.RANDOM), Scheduling.DEFAULT, args);
-		amas.start();
-	}
-
 
 
 
 	public List<AGFunction> askNeighbourgs(AGFunction func) {
-		List<AGFunction> ret = new ArrayList<AGFunction>(this.allAGFunctions);
+		List<AGFunction> ret = new ArrayList<AGFunction>(this.allAGFunctions.values());
 		int nbNeighbours = r.nextInt(this.allAGFunctions.size());
 		int ind = r.nextInt(this.allAGFunctions.size());
 		while(nbNeighbours >0) {
@@ -173,7 +329,15 @@ public class AmasF extends Amas<EnvironmentF>{
 
 
 	public double getValueOracle(String name) {
-		return this.oracle.get(name).compute();
+		switch(this.getEnvironment().getExpe()) {
+		case LPD:
+			return this.oracle.get(name).computeLPD();
+		case RANDOM:
+			return this.oracle.get(name).computeSum();
+		default:
+			return 0.0;
+		
+		}
 	}
 
 
@@ -208,4 +372,82 @@ public class AmasF extends Amas<EnvironmentF>{
 		OracleFunction of = this.oracle.get(agFunction.getName());
 		return of.getParameters().contains(s);
 	}
+
+	public Double getValueOfParameters(String s, AGFunction agf) {
+		double value = this.environment.getValueOfVariable(s);
+		try {
+			this.writer.write("ADD Fixe,"+agf.getName()+","+s+","+value+"\n");
+		} catch (IOException e) {
+			System.err.println("ERROR ADD ATTRIBUTE");
+		}
+		return value;
+		
+	}
+
+	public void CommunicateNeedOfVariableType(String s) {
+		this.typesOfParametersNeeded.add(s);
+	}
+	
+	public Set<String> getTypesOfVariableNeeded(){
+		Set<String> res = new TreeSet<String>();
+		for(String s : this.typesOfParametersNeeded) {
+			res.add(this.getTypeOfVariable(s));
+		}
+		return res;
+	}
+	
+	/**
+	 * Return the type of the variable
+	 * @param variable
+	 * @return String the type
+	 */
+	public String getTypeOfVariable(String variable) {
+		return this.environment.getTypeFromVariable(variable);
+	}
+
+	public void communicateValueOfVariable(String s, Double double1, AGFunction agf) {
+		this.network.put(s, double1);
+		try {
+			this.writer.write("ADD VAR,"+s+"\n");
+			this.writer.write(agf.getName()+","+ s+  ",isCommunicated,"+ "Communication\n");
+		} catch (IOException e) {
+			System.err.println("ERROR ADD VAR");
+		}
+	}
+
+	/**
+	 * return the value of the parameter communicated if it exist, 0 else
+	 * Give the information that the parameter is useful to communicate
+	 * @param s the name of the variable
+	 * @return the value of the parameter
+	 */
+	public Double getValueFromNetwork(String s, AGFunction agf) {
+		Double res = 0.0;
+		if(this.network.containsKey(s)) {
+			res = network.get(s);
+			this.parametersUseful.add(s);
+			try {
+				this.writer.write("ADD REL,"+ s+","+ agf.getName()+",Receive,"+s +",Reception \n");
+			} catch (IOException e) {
+				System.err.println("ERROR ADD REL");
+			}
+		}
+		return res;
+	}
+
+	/**
+	 * Return the parameter useful
+	 * @param parametersFixes
+	 * @return
+	 */
+	public Set<String> isParametersUseful(List<String> parametersFixes) {
+		Set<String> res = new TreeSet<String>();
+		for(String s : parametersFixes) {
+			if(this.parametersUsefulLastCycle.contains(s)) {
+				res.add(s);
+			}
+		}
+		return res;
+	}
+	
 }

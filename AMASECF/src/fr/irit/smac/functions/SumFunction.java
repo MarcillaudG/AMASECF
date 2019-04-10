@@ -42,4 +42,13 @@ public class SumFunction extends Function{
 		this.allVariables.put(name, value); 
 	}
 
+	public double compute(Map<String, Double> parameters) {
+		double res = 0.0;
+		for(String s : parameters.keySet()) {
+			res += parameters.get(s);
+		}
+		return res;
+		
+	}
+
 }

@@ -1,7 +1,12 @@
 package fr.irit.smac.functions;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.TreeMap;
+import java.util.TreeSet;
+
+import fr.irit.smac.mas.EnvironmentF;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,22 +22,33 @@ public class OracleFunction {
 	
 	private List<String> keysParameters;
 	
-	private LPDFunction myFunction;
+	private Set<String> parametersFixes;
+	
+	private Set<String> parametersVariables;
+	
+	private SumFunction myFunctionSum;
+	
+	private LPDFunction myFunctionLPD;
 	
 	public OracleFunction(String name) {
 		this.name = name;
 		this.coeffs = new TreeMap<String,Double>();
 		this.parameters = new TreeMap<String,Double>();
 		this.keysParameters = new ArrayList<String>();
-		this.myFunction = new LPDFunction(0.0, 0.0);
+		this.parametersFixes = new TreeSet<String>();
+		this.parametersVariables = new TreeSet<String>();
+		this.myFunctionSum = new SumFunction();
 	}
 	
 	/**
 	 * Return the result of the function
 	 * @return the result
 	 */
-	public double compute() {
-		return this.myFunction.compute();
+	public double computeSum() {
+		return this.myFunctionSum.compute();
+	}
+	public double computeLPD() {
+		return this.myFunctionLPD.compute();
 	}
 	
 	public void addCoeff(String s, double coeff) {
@@ -74,6 +90,10 @@ public class OracleFunction {
 		return this.keysParameters;
 	}
 	
+	public Set<String> getAllParameters(){
+		return this.parameters.keySet();
+	}
+	
 	/**
 	 * Put a paramater in the map of parameters
 	 * @param s
@@ -88,27 +108,27 @@ public class OracleFunction {
 	 * @param fun
 	 */
 	public void setFunction(LPDFunction fun) {
-		this.myFunction = fun;
+		this.myFunctionLPD = fun;
 	}
 	
 	public void setLength(Double length) {
-		this.myFunction.setL(length);
+		this.myFunctionLPD.setL(length);
 	}
 	
 	public void setSpeed(Double speed) {
-		this.myFunction.setV(speed);
+		this.myFunctionLPD.setV(speed);
 	}
 	
 	public void setC(Double c) {
-		this.myFunction.setC(c);
+		this.myFunctionLPD.setC(c);
 	}
 	
 	public void addFlow(Double flow) {
-		this.myFunction.addFlow(flow);
+		this.myFunctionLPD.addFlow(flow);
 	}
 
 	public LPDFunction getFunction() {
-		return this.myFunction;
+		return this.myFunctionLPD;
 	}
 
 	public void addParameters(String string) {
@@ -117,9 +137,42 @@ public class OracleFunction {
 	}
 
 	public void reinit() {
-		this.myFunction.initFlows();
+		this.myFunctionLPD.initFlows();
 		
 	}
+
+	public void addParametersFixe(String variable) {
+		this.parametersFixes.add(variable);
+		this.myFunctionSum.addCorrectVariable(variable);
+		this.parameters.put(variable, 0.0);
+		
+	}
+
+	public Set<String> getParametersFixes() {
+		return this.parametersFixes;
+	}
+
+	public void addParametersVariable(String variable) {
+		this.parametersVariables.add(variable);
+		this.myFunctionSum.addCorrectVariable(variable);
+		this.parameters.put(variable, 0.0);
+	}
 	
+
+	public Set<String> getParametersVariables() {
+		return this.parametersVariables;
+	}
+	
+	public void setValueOfVariable(String variable,Double value) {
+		this.parameters.put(variable, value);
+		this.myFunctionSum.AddParameters(variable, value);
+	}
+
+	public Map<String,Double> getParameterAndValue() {
+		return this.parameters;
+		
+	}
+
+
 	
 }
