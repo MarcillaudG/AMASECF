@@ -15,15 +15,8 @@ import fr.irit.smac.functions.SumFunction;
 
 public class AGFunction extends Agent<AmasF,EnvironmentF>{
 
-	private final static double SEUIL = 1.0;
-	
-	private final static int NB_CYCLE_MIN = 5;
-	
-	private final static int NB_CYCLE_MAX = 100;
 	
 	private final static int NB_COMMUNICATION_MAX = 20;
-	
-	private int cycle_since_last_information;
 	
 	private Map<String,Double>  parameters;
 
@@ -82,7 +75,6 @@ public class AGFunction extends Agent<AmasF,EnvironmentF>{
 	private void initHistory() {
 		//this.history = new ArrayList<Map<String,Double>>();
 		//this.resultHistory = new ArrayList<Double>();
-		this.cycle_since_last_information = 0;
 	}
 	
 	@Override
@@ -206,6 +198,10 @@ public class AGFunction extends Agent<AmasF,EnvironmentF>{
 					nbCom++;
 					this.parametersCommunicated.add(s);
 			}*/
+			
+			
+			
+			
 			break;
 		default:
 			break;

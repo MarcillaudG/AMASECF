@@ -39,34 +39,34 @@ public class AmasF extends Amas<EnvironmentF>{
 	//private List<String> parameters;
 
 	private Map<String,Double> parameters;
-	
+
 	private Map<String,Double> network;
-	
+
 	private Map<String,Double> parameterTypeNeeded;
 
 	private Map<String,AGFunction> allAGFunctions;
-	
+
 	private Set<String> parametersUseful;
-	
+
 	private Set<String> parametersUsefulLastCycle;
 
 	private Random r = new Random();
-	
+
 	private Set<String> typesOfParametersNeeded;
-	
+
 	private File fileLinks;
-	
+
 	private FileWriter writer;
-	
+
 
 	public AmasF(EnvironmentF environment, Scheduling scheduling, Object[] params) {
 		super(environment, scheduling, params);
 		this.fileLinks = new File("linksexpe.txt");
-			try {
-				this.writer = new FileWriter(this.fileLinks);
-			} catch (IOException e) {
-				System.err.println("ERROR WRITER");
-			}
+		try {
+			this.writer = new FileWriter(this.fileLinks);
+		} catch (IOException e) {
+			System.err.println("ERROR WRITER");
+		}
 		switch(environment.getExpe()) {
 		case LPD:
 			initLPD();
@@ -80,10 +80,10 @@ public class AmasF extends Amas<EnvironmentF>{
 			break;
 		default:
 			break;
-		
+
 		}
 	}
-	
+
 	@Override
 	protected void onInitialConfiguration() {
 		super.onInitialConfiguration();
@@ -98,7 +98,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		//this.parameters = new ArrayList<String>();
 		this.allAGFunctions = new TreeMap<String,AGFunction>();
 		this.parameters = new TreeMap<String, Double>();
-		
+
 		// Initialization of parameter
 		for(int i = 0; i < NB_PARAMETER_MAX; i++) {
 			//this.parameters.add("param"+i);
@@ -160,39 +160,43 @@ public class AmasF extends Amas<EnvironmentF>{
 	 * @throws IOException 
 	 */
 	private void initRandom() throws IOException {
-		// init of collection
+		// init of collections
 		this.oracle = new TreeMap<String,OracleFunction>();
 		this.allAGFunctions = new TreeMap<String,AGFunction>();
 		this.parameterTypeNeeded = new TreeMap<String,Double>();
 		this.parametersUsefulLastCycle = new TreeSet<String>();
-		
-		
+
+
 		List<String> variablestmp = new ArrayList<String>(this.environment.getVariables());
+
 		System.out.println("SIZE : "+ variablestmp.size());
 		this.writer.write("Entities : \n");
+
+		// Creation of the firsts agents
 		for(int i = 0; i < EnvironmentF.NB_AGENTS_MAX; i++) {
 			String name = "function"+i;
 			//Creation of the oracle function and the corresponding agent
 			AGFunction agf = new AGFunction(this, params, name);
 
 			this.writer.write("AGFunction," + name + "\n");
-			
+
 			OracleFunction of = new OracleFunction(name);
-			
+
 			// Initialization of parameters of function
-			
+
 			//Parameters fixes
 			this.writer.write("Fixes : {\n");
 			for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j++) {
 				String variable = variablestmp.remove(r.nextInt(variablestmp.size()));
 				of.addParametersFixe(variable);
 				agf.addParameterFixe(variable);
-				
+
 				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
-				
+
 			}
 			this.writer.write("}\n");
 
+			// Write the variable for Links
 			this.writer.write("Variables : {\n");
 			//Parameters variables
 			List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
@@ -207,9 +211,81 @@ public class AmasF extends Amas<EnvironmentF>{
 
 			this.oracle.put(name,of);
 			this.allAGFunctions.put(name,agf);
-			
 		}
+		
+		// Creation of the seconds agents
+		//initSecond();
+
 		this.writer.write("EXPE\n");
+	}
+
+	/**
+	 * Second phase of initialisation of agents, can be optional
+	 * @throws IOException
+	 */
+	private void initSecond() throws IOException {
+				List<OracleFunction> oraclestmp = new ArrayList<OracleFunction>(this.oracle.values());
+				for(OracleFunction old : oraclestmp) {
+					
+					// Variables of the old function
+					List<String> variableOfOld = new ArrayList<String>(old.getParametersFixes());
+					
+					// Variables of the environment without the ones from the old functions
+					List<String> environmentVariable = new ArrayList<String>(this.environment.getVariables());
+					environmentVariable.removeAll(variableOfOld);
+					
+					//Construction of the functions
+					String name = old.getname()+"Other";
+					AGFunction agf = new AGFunction(this, params, name);
+					OracleFunction of = new OracleFunction(name);
+
+					this.writer.write("AGFunction," + name + "\n");
+
+
+					// Initialization of parameters of function
+
+					this.writer.write("Fixes : {\n");
+
+					// Parameters fixes
+					for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j=j+2) {
+						
+						// Variable of the matching function
+						String variable = variableOfOld.remove(r.nextInt(variableOfOld.size()));
+						environmentVariable.remove(variable);
+						of.addParametersFixe(variable);
+						agf.addParameterFixe(variable);
+						this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
+						
+						// Other variables
+						String variable2 = environmentVariable.remove(r.nextInt(environmentVariable.size()));
+						of.addParametersFixe(variable2);
+						agf.addParameterFixe(variable2);
+
+						this.writer.write(this.environment.getTypeFromVariable(variable2) + ","+ variable2 + ","+ this.environment.getValueOfVariable(variable2) + "\n");
+
+					}
+
+					this.writer.write("}\n");
+
+					// Write the variable for Links
+					this.writer.write("Variables : {\n");
+					//Parameters variables
+					List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
+					variablesRemaining.removeAll(of.getParametersFixes());
+					for(int j = 0; j < EnvironmentF.NB_VARIABLES_VARIABLES; j++) {
+						String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
+						of.addParametersVariable(variable);
+						agf.addParameterVariable(variable);
+						this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
+					}
+
+					this.writer.write("}\n");
+					
+					//Add to the collections
+					this.oracle.put(name,of);
+					this.allAGFunctions.put(name,agf);
+
+				}
 	}
 	
 	@Override
@@ -219,7 +295,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		this.typesOfParametersNeeded = new TreeSet<String>();
 		this.network = new TreeMap<String,Double>();
 		this.parametersUseful = new TreeSet<String>();
-		
+
 
 		// Give the parameters to the oracle
 		switch(this.environment.getExpe()) {
@@ -249,7 +325,7 @@ public class AmasF extends Amas<EnvironmentF>{
 			break;
 		default:
 			break;
-		
+
 		}
 	}
 
@@ -268,8 +344,9 @@ public class AmasF extends Amas<EnvironmentF>{
 			case RANDOM:
 				for(AGFunction agf : this.allAGFunctions.values()) {
 					OracleFunction of = this.oracle.get(agf.getName());
-					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Oracle",this.getCycle(), of.computeSum());
-					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Agent",this.getCycle(), agf.computeSum());
+					//LxPlot.getChart(agf.getName(), ChartType.LINE).add("Oracle",this.getCycle(), of.computeSum());
+					//LxPlot.getChart(agf.getName(), ChartType.LINE).add("Agent",this.getCycle(), agf.computeSum());
+					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Agent",this.getCycle(), of.computeSum()-agf.computeSum());
 				}
 				this.parametersUsefulLastCycle = new TreeSet<String>();
 				this.parametersUsefulLastCycle.addAll(this.parametersUseful);
@@ -278,7 +355,7 @@ public class AmasF extends Amas<EnvironmentF>{
 				} catch (IOException e) {
 					System.err.println("ERROR END CYCLE");
 				}
-				
+
 				//System.out.println(this.parametersUsefulLastCycle);
 				/*System.out.println("CYCLE : "+this.cycle);
 				for(String s : this.allAGFunctions.get("function 0").getParameterAndValue().keySet()) {
@@ -289,7 +366,7 @@ public class AmasF extends Amas<EnvironmentF>{
 				break;
 			default:
 				break;
-			
+
 			}
 		}
 		if(this.getCycle() == 50) {
@@ -336,7 +413,7 @@ public class AmasF extends Amas<EnvironmentF>{
 			return this.oracle.get(name).computeSum();
 		default:
 			return 0.0;
-		
+
 		}
 	}
 
@@ -381,13 +458,13 @@ public class AmasF extends Amas<EnvironmentF>{
 			System.err.println("ERROR ADD ATTRIBUTE");
 		}
 		return value;
-		
+
 	}
 
 	public void CommunicateNeedOfVariableType(String s) {
 		this.typesOfParametersNeeded.add(s);
 	}
-	
+
 	public Set<String> getTypesOfVariableNeeded(){
 		Set<String> res = new TreeSet<String>();
 		for(String s : this.typesOfParametersNeeded) {
@@ -395,7 +472,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		}
 		return res;
 	}
-	
+
 	/**
 	 * Return the type of the variable
 	 * @param variable
@@ -449,5 +526,5 @@ public class AmasF extends Amas<EnvironmentF>{
 		}
 		return res;
 	}
-	
+
 }
