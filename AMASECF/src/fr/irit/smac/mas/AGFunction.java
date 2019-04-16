@@ -206,6 +206,9 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			int nbCom = 0;
 			for(String variableUseful : this.parametersUseful) {
 				nbCom++;
+				for(AGFunction agf : this.amas.getNeighborhood(this)) {
+					
+				}
 				this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
 				this.parametersCommunicated.add(variableUseful);
 			}
@@ -369,5 +372,32 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	public Set<String> getParametersVariables() {
 		return this.parametersVariables;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AGFunction other = (AGFunction) obj;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
+			return false;
+		return true;
+	}
+	
+	
 
 }

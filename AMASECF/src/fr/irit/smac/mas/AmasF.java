@@ -564,4 +564,15 @@ public class AmasF extends Amas<EnvironmentF>{
 		return res;
 	}
 
+	/**
+	 * Return all AGFunction near in the neighborhood of the agent in input
+	 * @param agFunction
+	 * @return
+	 */
+	public List<AGFunction> getNeighborhood(AGFunction agFunction) {
+		List<AGFunction> neighbours = new ArrayList<AGFunction>(this.allAGFunctions.values());
+		neighbours.remove(agFunction);
+		return neighbours;
+	}
+
 }
