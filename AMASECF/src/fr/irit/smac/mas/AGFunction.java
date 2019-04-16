@@ -146,35 +146,22 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 				}
 			}
 			
-			
-			
-			
+			// Ask for the type of the variable
 			for(String s : this.parametersVariables) {
 				getAmas().CommunicateNeedOfVariableType(s);
 			}
-			this.parametersUseful.addAll(getAmas().isParametersUseful(this.parametersFixes));
+			
+			//this.parametersUseful.addAll(getAmas().isParametersUseful(this.parametersFixes));
+			
+			// Remove the parameters communicated but useless
 			this.parametersCommunicated.removeAll(this.parametersUseful);
 			this.parametersNotUseful.addAll(this.parametersCommunicated);
 			this.parametersCommunicated = new TreeSet<String>();
 			
-			
 
-			int nbCom = 0;
-			for(String variableUseful : this.parametersUseful) {
-				nbCom++;
-				this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
-				this.parametersCommunicated.add(variableUseful);
-			}
+			criticality = this.parametersUseful.size();
 			
-			List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
-			variablesRemaining.removeAll(this.parametersUseful);
-			variablesRemaining.removeAll(parametersNotUseful);
-			for(int j = 0; j < variablesRemaining.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
-				String s = variablesRemaining.get(j);
-					this.getAmas().communicateValueOfVariable(s,this.parameters.get(s),this);
-					nbCom++;
-					this.parametersCommunicated.add(s);
-			}
+			
 			
 			break;
 		default:
@@ -213,7 +200,25 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			}
 			break;
 		case RANDOM:
-			criticality = this.parametersUseful.size();
+			
+
+
+			int nbCom = 0;
+			for(String variableUseful : this.parametersUseful) {
+				nbCom++;
+				this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
+				this.parametersCommunicated.add(variableUseful);
+			}
+			
+			List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
+			variablesRemaining.removeAll(this.parametersUseful);
+			variablesRemaining.removeAll(parametersNotUseful);
+			for(int j = 0; j < variablesRemaining.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
+				String s = variablesRemaining.get(j);
+					this.getAmas().communicateValueOfVariable(s,this.parameters.get(s),this);
+					nbCom++;
+					this.parametersCommunicated.add(s);
+			}
 			
 			
 			break;
