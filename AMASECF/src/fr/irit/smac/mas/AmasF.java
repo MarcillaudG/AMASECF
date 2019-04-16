@@ -406,7 +406,7 @@ public class AmasF extends Amas<EnvironmentF>{
 
 			}
 		}
-		if(this.getCycle() == 50) {
+		/*if(this.getCycle() == 50) {
 			try {
 				this.writer.close();
 				this.getScheduler().stop();
@@ -414,7 +414,7 @@ public class AmasF extends Amas<EnvironmentF>{
 			} catch (IOException e) {
 				System.err.println("ERROR Close");
 			}
-		}
+		}*/
 	}
 
 	public Map<String, Double> getData(Set<String> inparameters) {

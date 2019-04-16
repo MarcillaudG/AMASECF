@@ -1,6 +1,7 @@
 package fr.irit.smac.mas;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,45 +23,45 @@ import messages.SimpleEnvelope;
 
 public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
-	
+
 	private final static int NB_COMMUNICATION_MAX = 20;
-	
+
 	private Map<String,Double>  parameters;
 
 	private String name;
-	
+
 	private List<AGFunction> neighbours;
-	
+
 	private String length;
-	
+
 	private String speed;
-	
+
 	private String capacity;
-	
+
 	private int criticality = 0;
-	
+
 	private List<String> flow;
-	
-	
+
+
 	private List<String> parametersFixes;
-	
+
 	private Set<String> parametersVariables;
-	
+
 	private Set<String> parametersUseful;
 	private Set<String> parametersNotUseful;
 	private Set<String> parametersCommunicated;
-	
+
 	private Set<MessageParameter> parametersToCommunicate;
-	
+
 	private Map<String,AID> agentsToThanks;
-	
+
 	private LPDFunction myFunctionLPD;
 	private SumFunction myFunctionSum;
-	
+
 	private double feedback;
 	public AGFunction(AmasF amas, Object[] params, String name) {
 		super(amas, params);
-		
+
 		this.name = name;
 		parameters = new TreeMap<String,Double>();
 		this.neighbours = new ArrayList<AGFunction>();
@@ -70,45 +71,46 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		this.parametersNotUseful = new TreeSet<String>();
 		this.parametersCommunicated = new TreeSet<String>();
 		
-		
+
+
 		this.flow = new ArrayList<String>();
 		feedback = 0.0;
 		initHistory();
 	}
-	
+
 	private void initHistory() {
 		//this.history = new ArrayList<Map<String,Double>>();
 		//this.resultHistory = new ArrayList<Double>();
 	}
-	
+
 	@Override
 	protected void onInitialization() {
-		
+
 	}
-	
+
 	@Override
 	protected void onAgentCycleBegin() {
 		for(String s : this.parameters.keySet()) {
 			this.parameters.put(s, 0.0);
 		}
 	}
-	
-	
+
+
 	@Override
 	protected void onPerceive() {
 		switch(getAmas().getEnvironment().getExpe()) {
 		case LPD:
 			// Recuperation du voisinage
 			this.neighbours = this.getAmas().askNeighbourgs(this);
-			
+
 			//Renitialisation de la fonction
 			this.myFunctionLPD = new LPDFunction(this.getAmas().getLength(this.length), this.getAmas().getSpeed(this.speed));
-			
-			
+
+
 			//if(this.capacity != null && this.dataPerceived.contains(this.capacity)) {
-				this.myFunctionLPD.setC(this.getAmas().getCapacity(this.capacity));
+			this.myFunctionLPD.setC(this.getAmas().getCapacity(this.capacity));
 			//}
-			
+
 
 			// Recuperation de tous les parametres percus
 			/*for(String s : this.flow) {
@@ -118,62 +120,61 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			}*/
 			break;
 		case RANDOM:
-			
+
 			// Initialization of the function
 			this.myFunctionSum = new SumFunction();
-			
+
 			// Initialization of the collection for communication
-			this.parametersToCommunicate = new TreeSet<MessageParameter>();
+			this.parametersToCommunicate = new HashSet<MessageParameter>();
 			this.agentsToThanks = new TreeMap<String,AID>();
-			
-			
+
+
 			// Perception of the fixed parameters
 			for(String s : this.parametersFixes) {
 				this.parameters.put(s, this.getAmas().getValueOfParameters(s,this));
 			}
-			
+
 			// Reading of all messages
 			for(IAmakEnvelope env : this.getAllMessages()) {
-				SimpleEnvelope senv = (SimpleEnvelope)env;
 				// Case of a parameters is sent
-				if(senv.getMessage() instanceof MessageParameter) {
-					MessageParameter param = (MessageParameter)senv.getMessage();
+				if(env.getMessage() instanceof MessageParameter) {
+					MessageParameter param = (MessageParameter)env.getMessage();
 					if(this.parametersVariables.contains(param.getName())) {
 						this.parameters.put(param.getName(), param.getValue());
 					}
 				}
 				// Case of a notify is sent to notify that a parameter is useful to send
 				else {
-					MessageNotify notif = (MessageNotify)senv.getMessage();
+					MessageNotify notif = (MessageNotify)env.getMessage();
 					this.parametersUseful.add(notif.getName());
-					this.agentsToThanks.put(notif.getName(), senv.getMessageSenderAID());
+					this.agentsToThanks.put(notif.getName(), env.getMessageSenderAID());
 				}
 			}
-			
+
 			// Ask for the type of the variable
 			for(String s : this.parametersVariables) {
 				getAmas().CommunicateNeedOfVariableType(s);
 			}
-			
+
 			//this.parametersUseful.addAll(getAmas().isParametersUseful(this.parametersFixes));
-			
+
 			// Remove the parameters communicated but useless
 			this.parametersCommunicated.removeAll(this.parametersUseful);
 			this.parametersNotUseful.addAll(this.parametersCommunicated);
 			this.parametersCommunicated = new TreeSet<String>();
-			
+
 
 			criticality = this.parametersUseful.size();
-			
-			
-			
+
+
+
 			break;
 		default:
 			break;
-		
+
 		}
 	}
-	
+
 	@Override
 	protected void onDecide() {
 		switch(getAmas().getEnvironment().getExpe()) {
@@ -195,18 +196,17 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			while(dataMisses.size() > 0 && i < this.neighbours.size()) {
 				AGFunction agf = this.neighbours.get(i);
 				Map<String,Double> datas = agf.exchangeInformation(dataMisses);
-				
+
 				for(String s : datas.keySet()) {
 					dataMisses.remove(s);
 					this.myFunctionLPD.addFlow(datas.get(s));
 				}
-				
+
 			}*/
 			break;
 		case RANDOM:
-			
 
-
+			// The agent decide which parameters to communicate
 			int nbCom = 0;
 			// Communication of the parameters useful
 			for(String variableUseful : this.parametersUseful) {
@@ -214,24 +214,27 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 				MessageParameter param = new MessageParameter(variableUseful, this.parameters.get(variableUseful));
 				this.parametersToCommunicate.add(param);
 				// this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
-				// this.parametersCommunicated.add(variableUseful);
+				this.parametersCommunicated.add(variableUseful);
 			}
-			
+
+			// Communication of the parameters remaining
 			List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
 			variablesRemaining.removeAll(this.parametersUseful);
 			variablesRemaining.removeAll(parametersNotUseful);
 			for(int j = 0; j < variablesRemaining.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
 				String s = variablesRemaining.get(j);
-					this.getAmas().communicateValueOfVariable(s,this.parameters.get(s),this);
-					nbCom++;
-					this.parametersCommunicated.add(s);
+				MessageParameter param = new MessageParameter(s, this.parameters.get(s));
+				//this.getAmas().communicateValueOfVariable(s,this.parameters.get(s),this);
+				this.parametersToCommunicate.add(param);
+				nbCom++;
+				this.parametersCommunicated.add(s);
 			}
-			
-			
+
+
 			break;
 		default:
 			break;
-		
+
 		}
 	}
 
@@ -274,21 +277,21 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			System.out.println(this.name + " : ORACLE : "+oracle);
 			break;
 		case RANDOM:
-			
+
 			// Compute the calcul
 			double resSum = this.myFunctionSum.compute(this.parameters);
-			
+
 			double oracleSum = this.getAmas().getValueOracle(this.name);
-			
+
 			feedback = Math.abs(resSum - oracleSum);
-			
-			
+
+
 			// Send the messages for the next cycle
 			// Send the message to notify the usefulness of a parameter
 			for(String param : this.agentsToThanks.keySet()) {
 				this.sendMessage(new MessageNotify(param), this.agentsToThanks.get(param));
 			}
-			
+
 			// Send the message to share the value of a parameter for the next cycle
 			for(AGFunction agf : this.getAmas().getNeighborhood(this)) {
 				for(MessageParameter mess : this.parametersToCommunicate) {
@@ -298,13 +301,13 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			break;
 		default:
 			break;
-		
+
 		}
-		
+
 		//this.resultHistory.add(oracle);
 		//this.history.add(new TreeMap<String,Double>(this.parameters));
 	}
-	
+
 	/**
 	 * getter on name
 	 * @return name
@@ -312,7 +315,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	public String getName() {
 		return this.name;
 	}
-	
+
 	/**
 	 * Add a new parameter
 	 * @param s
@@ -329,8 +332,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		return "AGFunction [parameters=" + parameters +  ", name=" + name + ", feedback="
 				+ feedback + "]";
 	}
-	
-	
+
+
 	public void addDataPerceived(String data) {
 		//this.dataPerceived.add(data);
 	}
@@ -338,26 +341,26 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	public void setFunction(LPDFunction fun) {
 		this.myFunctionLPD = fun;
 	}
-	
+
 	public void setLength(String length) {
 
 		this.addParameter(length);
 		this.addDataPerceived(length);
 		this.length = length;
 	}
-	
+
 	public void setSpeed(String speed) {
 		this.addParameter(speed);
 		this.addDataPerceived(speed);
 		this.speed =speed;
 	}
-	
+
 	public void setC(String c) {
 		this.addParameter(c);
 		this.addDataPerceived(c);
 		this.capacity = c;
 	}
-	
+
 	public void addFlow(String flow) {
 		this.flow.add(flow);
 	}
@@ -369,7 +372,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	public void addParameterFixe(String variable) {
 		this.parametersFixes.add(variable);
 	}
-	
+
 
 	public void addParameterVariable(String variable) {
 		this.parametersVariables.add(variable);
@@ -411,7 +414,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			return false;
 		return true;
 	}
-	
-	
+
+
 
 }
