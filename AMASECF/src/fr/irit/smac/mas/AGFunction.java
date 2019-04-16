@@ -12,6 +12,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import Jama.Matrix;
 import fr.irit.smac.amak.Agent;
 import fr.irit.smac.amak.CommunicatingAgent;
+import fr.irit.smac.amak.aid.AID;
 import fr.irit.smac.amak.messaging.IAmakEnvelope;
 import fr.irit.smac.functions.LPDFunction;
 import fr.irit.smac.functions.SumFunction;
@@ -26,12 +27,6 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	
 	private Map<String,Double>  parameters;
 
-	//private List<Map<String,Double>> history;
-	
-	//private List<Double> resultHistory;
-	
-	private Map<String,Double> coeffs;
-	
 	private String name;
 	
 	private List<AGFunction> neighbours;
@@ -47,8 +42,6 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private List<String> flow;
 	
 	
-	private Set<String> dataCommunicated;
-	
 	private List<String> parametersFixes;
 	
 	private Set<String> parametersVariables;
@@ -56,6 +49,10 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private Set<String> parametersUseful;
 	private Set<String> parametersNotUseful;
 	private Set<String> parametersCommunicated;
+	
+	private Set<MessageParameter> parametersToCommunicate;
+	
+	private Map<String,AID> agentsToThanks;
 	
 	private LPDFunction myFunctionLPD;
 	private SumFunction myFunctionSum;
@@ -66,14 +63,13 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		
 		this.name = name;
 		parameters = new TreeMap<String,Double>();
-		coeffs = new TreeMap<String,Double>();
 		this.neighbours = new ArrayList<AGFunction>();
-		this.dataCommunicated = new TreeSet<String>();
 		this.parametersFixes = new ArrayList<String>();
 		this.parametersVariables = new TreeSet<String>();
 		this.parametersUseful = new TreeSet<String>();
 		this.parametersNotUseful = new TreeSet<String>();
 		this.parametersCommunicated = new TreeSet<String>();
+		
 		
 		this.flow = new ArrayList<String>();
 		feedback = 0.0;
@@ -122,8 +118,15 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			}*/
 			break;
 		case RANDOM:
+			
 			// Initialization of the function
 			this.myFunctionSum = new SumFunction();
+			
+			// Initialization of the collection for communication
+			this.parametersToCommunicate = new TreeSet<MessageParameter>();
+			this.agentsToThanks = new TreeMap<String,AID>();
+			
+			
 			// Perception of the fixed parameters
 			for(String s : this.parametersFixes) {
 				this.parameters.put(s, this.getAmas().getValueOfParameters(s,this));
@@ -143,6 +146,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 				else {
 					MessageNotify notif = (MessageNotify)senv.getMessage();
 					this.parametersUseful.add(notif.getName());
+					this.agentsToThanks.put(notif.getName(), senv.getMessageSenderAID());
 				}
 			}
 			
@@ -180,13 +184,13 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 					for(String s : ag.flow) {
 						if(!this.flow.contains(s) && this.getAmas().isParameterUseful(s, this)) {
 							this.flow.add(s);
-							this.dataCommunicated.add(s);
+							//this.dataCommunicated.add(s);
 						}
 					}
 				}
 			}
 			// Recuperation des donnes par communication
-			Set<String> dataMisses = new TreeSet<String>(this.dataCommunicated);
+			/*Set<String> dataMisses = new TreeSet<String>(this.dataCommunicated);
 			int i = 0;
 			while(dataMisses.size() > 0 && i < this.neighbours.size()) {
 				AGFunction agf = this.neighbours.get(i);
@@ -197,20 +201,20 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 					this.myFunctionLPD.addFlow(datas.get(s));
 				}
 				
-			}
+			}*/
 			break;
 		case RANDOM:
 			
 
 
 			int nbCom = 0;
+			// Communication of the parameters useful
 			for(String variableUseful : this.parametersUseful) {
 				nbCom++;
-				for(AGFunction agf : this.amas.getNeighborhood(this)) {
-					
-				}
-				this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
-				this.parametersCommunicated.add(variableUseful);
+				MessageParameter param = new MessageParameter(variableUseful, this.parameters.get(variableUseful));
+				this.parametersToCommunicate.add(param);
+				// this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
+				// this.parametersCommunicated.add(variableUseful);
 			}
 			
 			List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
@@ -270,17 +274,27 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			System.out.println(this.name + " : ORACLE : "+oracle);
 			break;
 		case RANDOM:
-			// Get the parameters communicated
-			for(String s : this.parametersVariables) {
-				this.parameters.put(s, this.getAmas().getValueFromNetwork(s,this));
-			}
 			
+			// Compute the calcul
 			double resSum = this.myFunctionSum.compute(this.parameters);
 			
 			double oracleSum = this.getAmas().getValueOracle(this.name);
 			
 			feedback = Math.abs(resSum - oracleSum);
 			
+			
+			// Send the messages for the next cycle
+			// Send the message to notify the usefulness of a parameter
+			for(String param : this.agentsToThanks.keySet()) {
+				this.sendMessage(new MessageNotify(param), this.agentsToThanks.get(param));
+			}
+			
+			// Send the message to share the value of a parameter for the next cycle
+			for(AGFunction agf : this.getAmas().getNeighborhood(this)) {
+				for(MessageParameter mess : this.parametersToCommunicate) {
+					this.sendMessage(mess, agf.getAID());
+				}
+			}
 			break;
 		default:
 			break;
@@ -312,7 +326,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 	@Override
 	public String toString() {
-		return "AGFunction [parameters=" + parameters + ", coeffs=" + coeffs + ", name=" + name + ", feedback="
+		return "AGFunction [parameters=" + parameters +  ", name=" + name + ", feedback="
 				+ feedback + "]";
 	}
 	
