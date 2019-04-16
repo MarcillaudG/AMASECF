@@ -1,5 +1,6 @@
 package fr.irit.smac.mas;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,10 +11,15 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import Jama.Matrix;
 import fr.irit.smac.amak.Agent;
+import fr.irit.smac.amak.CommunicatingAgent;
+import fr.irit.smac.amak.messaging.IAmakEnvelope;
 import fr.irit.smac.functions.LPDFunction;
 import fr.irit.smac.functions.SumFunction;
+import messages.MessageNotify;
+import messages.MessageParameter;
+import messages.SimpleEnvelope;
 
-public class AGFunction extends Agent<AmasF,EnvironmentF>{
+public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 	
 	private final static int NB_COMMUNICATION_MAX = 20;
@@ -116,10 +122,33 @@ public class AGFunction extends Agent<AmasF,EnvironmentF>{
 			}*/
 			break;
 		case RANDOM:
+			// Initialization of the function
 			this.myFunctionSum = new SumFunction();
+			// Perception of the fixed parameters
 			for(String s : this.parametersFixes) {
 				this.parameters.put(s, this.getAmas().getValueOfParameters(s,this));
 			}
+			
+			// Reading of all messages
+			for(IAmakEnvelope env : this.getAllMessages()) {
+				SimpleEnvelope senv = (SimpleEnvelope)env;
+				// Case of a parameters is sent
+				if(senv.getMessage() instanceof MessageParameter) {
+					MessageParameter param = (MessageParameter)senv.getMessage();
+					if(this.parametersVariables.contains(param.getName())) {
+						this.parameters.put(param.getName(), param.getValue());
+					}
+				}
+				// Case of a notify is sent to notify that a parameter is useful to send
+				else {
+					MessageNotify notif = (MessageNotify)senv.getMessage();
+					this.parametersUseful.add(notif.getName());
+				}
+			}
+			
+			
+			
+			
 			for(String s : this.parametersVariables) {
 				getAmas().CommunicateNeedOfVariableType(s);
 			}
