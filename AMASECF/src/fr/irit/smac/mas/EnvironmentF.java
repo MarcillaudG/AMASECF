@@ -16,9 +16,9 @@ import fr.irit.smac.amak.Scheduling;
 public class EnvironmentF extends Environment{
 
 	public enum Expe {LPD, RANDOM};
-	private static final int NB_VARIABLE_MAX = 1000;
+	private static int NB_VARIABLE_MAX = 1000;
 
-	public static final int NB_AGENTS_MAX = 10;
+	public static int NB_AGENTS_MAX = 10;
 
 	
 	// Static variables for LPD
@@ -49,11 +49,13 @@ public class EnvironmentF extends Environment{
 	
 	// Statics variables for Random
 
-	protected static final int NB_TYPES_VARIABLES = 50;
+	protected static int NB_TYPES_VARIABLES = 50;
 
-	protected static final int NB_VARIABLES_FIXES = 100;
+	protected static int NB_VARIABLES_FIXES = 100;
 
-	protected static final int NB_VARIABLES_VARIABLES = 20;
+	protected static int NB_VARIABLES_VARIABLES = 20;
+	
+	protected static boolean cross = false;
 
 	/**
 	 * Keys variables, Value value of variable
@@ -73,6 +75,23 @@ public class EnvironmentF extends Environment{
 
 	public EnvironmentF(Scheduling _scheduling, Object[] params, Expe expe) {
 		super(_scheduling, params);
+		this.expe = expe;
+		init();
+	}
+	public EnvironmentF(Object[] params, Expe expe) {
+		super(Scheduling.DEFAULT, params);
+		
+		if(params.length >=5) {
+			EnvironmentF.NB_AGENTS_MAX = Integer.parseInt((String) params[0]);
+			EnvironmentF.NB_VARIABLES_FIXES = Integer.parseInt((String) params[1]);
+			EnvironmentF.NB_VARIABLES_VARIABLES = Integer.parseInt((String) params[2]);
+			EnvironmentF.NB_TYPES_VARIABLES = Integer.parseInt((String) params[3]);
+			EnvironmentF.cross = Boolean.getBoolean((String) params[4]);
+			if(!cross) {
+				EnvironmentF.NB_VARIABLE_MAX = EnvironmentF.NB_AGENTS_MAX * EnvironmentF.NB_VARIABLES_FIXES;
+			}
+		}
+		
 		this.expe = expe;
 		init();
 	}

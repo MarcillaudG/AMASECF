@@ -36,6 +36,8 @@ public class AGFunction extends Agent<AmasF,EnvironmentF>{
 	
 	private String capacity;
 	
+	private int criticality = 0;
+	
 	private List<String> flow;
 	
 	
@@ -182,24 +184,7 @@ public class AGFunction extends Agent<AmasF,EnvironmentF>{
 			}
 			break;
 		case RANDOM:
-			/*int nbCom = 0;
-			for(String variableUseful : this.parametersUseful) {
-				nbCom++;
-				this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful));
-				this.parametersCommunicated.add(variableUseful);
-			}
-			//System.out.println("NBCOM BEFORE : "+nbCom);
-			List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
-			variablesRemaining.removeAll(this.parametersUseful);
-			variablesRemaining.removeAll(parametersNotUseful);
-			for(int j = 0; j < variablesRemaining.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
-				String s = variablesRemaining.get(j);
-					this.getAmas().communicateValueOfVariable(s,this.parameters.get(s));
-					nbCom++;
-					this.parametersCommunicated.add(s);
-			}*/
-			
-			
+			criticality = this.parametersUseful.size();
 			
 			
 			break;

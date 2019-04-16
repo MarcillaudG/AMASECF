@@ -59,8 +59,45 @@ public class AmasF extends Amas<EnvironmentF>{
 	private FileWriter writer;
 
 
+	/**
+	 * Constructor used by the test
+	 * @param environment
+	 * @param scheduling
+	 * @param params
+	 */
 	public AmasF(EnvironmentF environment, Scheduling scheduling, Object[] params) {
 		super(environment, scheduling, params);
+		
+		this.fileLinks = new File("linksexpe.txt");
+		try {
+			this.writer = new FileWriter(this.fileLinks);
+		} catch (IOException e) {
+			System.err.println("ERROR WRITER");
+		}
+		switch(environment.getExpe()) {
+		case LPD:
+			initLPD();
+			break;
+		case RANDOM:
+			try {
+				initRandom();
+			} catch (IOException e) {
+				System.err.println("ERROR INIT");
+			}
+			break;
+		default:
+			break;
+
+		}
+	}
+	
+	/**
+	 * Constructor used by the UI
+	 * @param environment
+	 * @param params
+	 */
+	public AmasF(EnvironmentF environment, Object[] params) {
+		super(environment, Scheduling.DEFAULT, params);
 		this.fileLinks = new File("linksexpe.txt");
 		try {
 			this.writer = new FileWriter(this.fileLinks);
@@ -344,9 +381,9 @@ public class AmasF extends Amas<EnvironmentF>{
 			case RANDOM:
 				for(AGFunction agf : this.allAGFunctions.values()) {
 					OracleFunction of = this.oracle.get(agf.getName());
-					//LxPlot.getChart(agf.getName(), ChartType.LINE).add("Oracle",this.getCycle(), of.computeSum());
-					//LxPlot.getChart(agf.getName(), ChartType.LINE).add("Agent",this.getCycle(), agf.computeSum());
-					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Agent",this.getCycle(), of.computeSum()-agf.computeSum());
+					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Oracle",this.getCycle(), of.computeSum());
+					LxPlot.getChart(agf.getName(), ChartType.LINE).add("Agent",this.getCycle(), agf.computeSum());
+					LxPlot.getChart(agf.getName()+" Differences", ChartType.LINE).add("Agent",this.getCycle(), of.computeSum()-agf.computeSum());
 				}
 				this.parametersUsefulLastCycle = new TreeSet<String>();
 				this.parametersUsefulLastCycle.addAll(this.parametersUseful);
