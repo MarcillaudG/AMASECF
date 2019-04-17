@@ -133,7 +133,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			for(String s : this.parametersFixes) {
 				this.parameters.put(s, this.getAmas().getValueOfParameters(s,this));
 			}
-
+			int i = 0;
 			// Reading of all messages
 			for(IAmakEnvelope env : this.getAllMessages()) {
 				// Case of a parameters is sent

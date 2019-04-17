@@ -129,6 +129,7 @@ public class EnvironmentF extends Environment{
 			}
 			break;
 		case RANDOM:
+			// Initialize the limits of the variables
 			for(int i = 0 ; i < NB_TYPES_VARIABLES;i++) {
 				String type = "Type"+i;
 				this.all_variables.put(type,new TreeSet<String>());
@@ -139,6 +140,15 @@ public class EnvironmentF extends Environment{
 				double min = r.nextInt(200);
 				double max = r.nextInt(200) + min+ 20;
 				this.variables_limits.put(type, Pair.of(min, max));
+			}
+			// First initialization of the values of the variables
+			for(String type : this.all_variables.keySet()) {
+				for(String variable : this.all_variables.get(type)) {
+					double min = this.variables_limits.get(type).getLeft();
+					double max = this.variables_limits.get(type).getRight();
+					double value = r.nextDouble() *(max-min)+min;
+					this.variables.put(variable, value);
+				}
 			}
 			break;
 		default:
@@ -182,7 +192,11 @@ public class EnvironmentF extends Environment{
 				for(String variable : this.all_variables.get(type)) {
 					double min = this.variables_limits.get(type).getLeft();
 					double max = this.variables_limits.get(type).getRight();
-					double value = r.nextDouble() *(max-min)+min;
+					
+					double modif = (max-min)/10;
+					modif = r.nextInt(2) == 0 ? -modif : modif;
+					
+					double value = this.variables.get(variable) + modif;
 					this.variables.put(variable, value);
 				}
 			}
