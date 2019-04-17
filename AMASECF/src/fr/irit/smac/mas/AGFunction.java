@@ -136,18 +136,19 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			int i = 0;
 			// Reading of all messages
 			for(IAmakEnvelope env : this.getAllMessages()) {
+
 				// Case of a parameters is sent
 				if(env.getMessage() instanceof MessageParameter) {
 					MessageParameter param = (MessageParameter)env.getMessage();
 					if(this.parametersVariables.contains(param.getName())) {
 						this.parameters.put(param.getName(), param.getValue());
+						this.agentsToThanks.put(param.getName(), env.getMessageSenderAID());
 					}
 				}
 				// Case of a notify is sent to notify that a parameter is useful to send
 				else {
 					MessageNotify notif = (MessageNotify)env.getMessage();
 					this.parametersUseful.add(notif.getName());
-					this.agentsToThanks.put(notif.getName(), env.getMessageSenderAID());
 				}
 			}
 
@@ -287,15 +288,21 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 
 			// Send the messages for the next cycle
-			// Send the message to notify the usefulness of a parameter
-			for(String param : this.agentsToThanks.keySet()) {
-				this.sendMessage(new MessageNotify(param), this.agentsToThanks.get(param));
-			}
+			this.getAmas().CommunicateMessageLinks(this.parametersToCommunicate,this.name);
 
 			// Send the message to share the value of a parameter for the next cycle
 			for(AGFunction agf : this.getAmas().getNeighborhood(this)) {
 				for(MessageParameter mess : this.parametersToCommunicate) {
 					this.sendMessage(mess, agf.getAID());
+				}
+			}
+
+			// Send the message to notify the usefulness of a parameter
+			for(String param : this.agentsToThanks.keySet()) {
+				this.sendMessage(new MessageNotify(param), this.agentsToThanks.get(param));
+				this.getAmas().notifyLinksVariableUseful(param,this.name);
+				if(this.name.equals("function0")) {
+					System.out.println("THANKS : "+this.agentsToThanks.keySet().size());
 				}
 			}
 			break;

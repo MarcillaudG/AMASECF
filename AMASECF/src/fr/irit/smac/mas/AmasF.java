@@ -26,6 +26,7 @@ import fr.irit.smac.lxplot.commons.ChartType;
 import fr.irit.smac.lxplot.server.LxPlotChart;
 import fr.irit.smac.mas.EnvironmentF.Expe;
 import fr.irit.smac.visu.LinksFileReader;
+import messages.MessageParameter;
 
 public class AmasF extends Amas<EnvironmentF>{
 
@@ -67,7 +68,7 @@ public class AmasF extends Amas<EnvironmentF>{
 	 */
 	public AmasF(EnvironmentF environment, Scheduling scheduling, Object[] params) {
 		super(environment, scheduling, params);
-		
+
 		this.fileLinks = new File("linksexpe.txt");
 		try {
 			this.writer = new FileWriter(this.fileLinks);
@@ -90,7 +91,7 @@ public class AmasF extends Amas<EnvironmentF>{
 
 		}
 	}
-	
+
 	/**
 	 * Constructor used by the UI
 	 * @param environment
@@ -249,7 +250,7 @@ public class AmasF extends Amas<EnvironmentF>{
 			this.oracle.put(name,of);
 			this.allAGFunctions.put(name,agf);
 		}
-		
+
 		// Creation of the seconds agents
 		//initSecond();
 
@@ -261,70 +262,70 @@ public class AmasF extends Amas<EnvironmentF>{
 	 * @throws IOException
 	 */
 	private void initSecond() throws IOException {
-				List<OracleFunction> oraclestmp = new ArrayList<OracleFunction>(this.oracle.values());
-				for(OracleFunction old : oraclestmp) {
-					
-					// Variables of the old function
-					List<String> variableOfOld = new ArrayList<String>(old.getParametersFixes());
-					
-					// Variables of the environment without the ones from the old functions
-					List<String> environmentVariable = new ArrayList<String>(this.environment.getVariables());
-					environmentVariable.removeAll(variableOfOld);
-					
-					//Construction of the functions
-					String name = old.getname()+"Other";
-					AGFunction agf = new AGFunction(this, params, name);
-					OracleFunction of = new OracleFunction(name);
+		List<OracleFunction> oraclestmp = new ArrayList<OracleFunction>(this.oracle.values());
+		for(OracleFunction old : oraclestmp) {
 
-					this.writer.write("AGFunction," + name + "\n");
+			// Variables of the old function
+			List<String> variableOfOld = new ArrayList<String>(old.getParametersFixes());
+
+			// Variables of the environment without the ones from the old functions
+			List<String> environmentVariable = new ArrayList<String>(this.environment.getVariables());
+			environmentVariable.removeAll(variableOfOld);
+
+			//Construction of the functions
+			String name = old.getname()+"Other";
+			AGFunction agf = new AGFunction(this, params, name);
+			OracleFunction of = new OracleFunction(name);
+
+			this.writer.write("AGFunction," + name + "\n");
 
 
-					// Initialization of parameters of function
+			// Initialization of parameters of function
 
-					this.writer.write("Fixes : {\n");
+			this.writer.write("Fixes : {\n");
 
-					// Parameters fixes
-					for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j=j+2) {
-						
-						// Variable of the matching function
-						String variable = variableOfOld.remove(r.nextInt(variableOfOld.size()));
-						environmentVariable.remove(variable);
-						of.addParametersFixe(variable);
-						agf.addParameterFixe(variable);
-						this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
-						
-						// Other variables
-						String variable2 = environmentVariable.remove(r.nextInt(environmentVariable.size()));
-						of.addParametersFixe(variable2);
-						agf.addParameterFixe(variable2);
+			// Parameters fixes
+			for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j=j+2) {
 
-						this.writer.write(this.environment.getTypeFromVariable(variable2) + ","+ variable2 + ","+ this.environment.getValueOfVariable(variable2) + "\n");
+				// Variable of the matching function
+				String variable = variableOfOld.remove(r.nextInt(variableOfOld.size()));
+				environmentVariable.remove(variable);
+				of.addParametersFixe(variable);
+				agf.addParameterFixe(variable);
+				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
 
-					}
+				// Other variables
+				String variable2 = environmentVariable.remove(r.nextInt(environmentVariable.size()));
+				of.addParametersFixe(variable2);
+				agf.addParameterFixe(variable2);
 
-					this.writer.write("}\n");
+				this.writer.write(this.environment.getTypeFromVariable(variable2) + ","+ variable2 + ","+ this.environment.getValueOfVariable(variable2) + "\n");
 
-					// Write the variable for Links
-					this.writer.write("Variables : {\n");
-					//Parameters variables
-					List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
-					variablesRemaining.removeAll(of.getParametersFixes());
-					for(int j = 0; j < EnvironmentF.NB_VARIABLES_VARIABLES; j++) {
-						String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
-						of.addParametersVariable(variable);
-						agf.addParameterVariable(variable);
-						this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
-					}
+			}
 
-					this.writer.write("}\n");
-					
-					//Add to the collections
-					this.oracle.put(name,of);
-					this.allAGFunctions.put(name,agf);
+			this.writer.write("}\n");
 
-				}
+			// Write the variable for Links
+			this.writer.write("Variables : {\n");
+			//Parameters variables
+			List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
+			variablesRemaining.removeAll(of.getParametersFixes());
+			for(int j = 0; j < EnvironmentF.NB_VARIABLES_VARIABLES; j++) {
+				String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
+				of.addParametersVariable(variable);
+				agf.addParameterVariable(variable);
+				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
+			}
+
+			this.writer.write("}\n");
+
+			//Add to the collections
+			this.oracle.put(name,of);
+			this.allAGFunctions.put(name,agf);
+
+		}
 	}
-	
+
 	@Override
 	protected void onSystemCycleBegin() {
 		// Values of the parameters for this cycle
@@ -406,7 +407,7 @@ public class AmasF extends Amas<EnvironmentF>{
 
 			}
 		}
-		/*if(this.getCycle() == 50) {
+		if(this.getCycle() == 100) {
 			try {
 				this.writer.close();
 				this.getScheduler().stop();
@@ -414,7 +415,7 @@ public class AmasF extends Amas<EnvironmentF>{
 			} catch (IOException e) {
 				System.err.println("ERROR Close");
 			}
-		}*/
+		}
 	}
 
 	public Map<String, Double> getData(Set<String> inparameters) {
@@ -573,6 +574,39 @@ public class AmasF extends Amas<EnvironmentF>{
 		List<AGFunction> neighbours = new ArrayList<AGFunction>(this.allAGFunctions.values());
 		neighbours.remove(agFunction);
 		return neighbours;
+	}
+
+	/**
+	 * Notify links that an agent communicate all its messages
+	 * @param parametersToCommunicate
+	 * @param name
+	 */
+	public void CommunicateMessageLinks(Set<MessageParameter> parametersToCommunicate,String name) {
+		for(MessageParameter mess : parametersToCommunicate) {
+			String s = mess.getName();
+			try {
+				this.writer.write("ADD VAR,"+s+"\n");
+				this.writer.write(name+","+ s+  ",isCommunicated,"+ "Communication\n");
+			} catch (IOException e) {
+				System.err.println("ERROR ADD VAR");
+			}
+		}
+	}
+
+	/**
+	 * Method use to notify links the reception of a variable
+	 * @param param
+	 * 		the name of the parameter
+	 * @param agName
+	 * The name of the function
+	 */
+	public void notifyLinksVariableUseful(String param, String agName) {
+
+		try {
+			this.writer.write("ADD REL,"+ param+","+ agName+",Receive,"+param +",Reception \n");
+		} catch (IOException e) {
+			System.err.println("ERROR ADD REL");
+		}
 	}
 
 }
