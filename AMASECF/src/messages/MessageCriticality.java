@@ -1,4 +1,7 @@
 package messages;
+
+import fr.irit.smac.amak.messaging.IAmakMessage;
+
 /**
  * 
  * @author gmarcill
@@ -6,7 +9,7 @@ package messages;
  * Message used to share the criticality between agent
  *
  */
-public class MessageCriticality {
+public class MessageCriticality implements IAmakMessage{
 
 	
 	private double criticality;

@@ -17,6 +17,7 @@ import fr.irit.smac.amak.aid.AID;
 import fr.irit.smac.amak.messaging.IAmakEnvelope;
 import fr.irit.smac.functions.LPDFunction;
 import fr.irit.smac.functions.SumFunction;
+import messages.MessageCriticality;
 import messages.MessageNotify;
 import messages.MessageParameter;
 import messages.SimpleEnvelope;
@@ -54,6 +55,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private Set<MessageParameter> parametersToCommunicate;
 
 	private Map<String,AID> agentsToThanks;
+	private Map<String,AID> agentsToDiscuss;
 
 	private LPDFunction myFunctionLPD;
 	private SumFunction myFunctionSum;
@@ -127,6 +129,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			// Initialization of the collection for communication
 			this.parametersToCommunicate = new HashSet<MessageParameter>();
 			this.agentsToThanks = new TreeMap<String,AID>();
+			this.agentsToDiscuss = new TreeMap<String,AID>();
 
 
 			// Perception of the fixed parameters
@@ -140,9 +143,14 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 				// Case of a parameters is sent
 				if(env.getMessage() instanceof MessageParameter) {
 					MessageParameter param = (MessageParameter)env.getMessage();
+					// Getting the data if it is useful
 					if(this.parametersVariables.contains(param.getName())) {
 						this.parameters.put(param.getName(), param.getValue());
 						this.agentsToThanks.put(param.getName(), env.getMessageSenderAID());
+					}
+					// If someone else share the same parameters
+					if(this.parametersFixes.contains(param.getName())) {
+						this.agentsToDiscuss.put(param.getName(), env.getMessageSenderAID());
 					}
 				}
 				// Case of a notify is sent to notify that a parameter is useful to send
@@ -303,6 +311,11 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 				if(this.name.equals("function0")) {
 					System.out.println("THANKS : "+this.agentsToThanks.keySet().size());
 				}
+			}
+			
+			// Send the message to discuss of whom share the parameters
+			for(String param : this.agentsToDiscuss.keySet()) {
+				this.sendMessage(new MessageCriticality(this.criticality),this.agentsToDiscuss.get(param));
 			}
 			break;
 		default:
