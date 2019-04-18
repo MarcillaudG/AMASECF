@@ -14,11 +14,18 @@ public class MessageCriticality implements IAmakMessage{
 	
 	private double criticality;
 	
-	public MessageCriticality(double value) {
+	private String parameters;
+	
+	public MessageCriticality(String param,double value) {
 		this.criticality = value;
+		this.parameters = param;
 	}
 	
 	public double getCriticality() {
 		return this.criticality;
+	}
+	
+	public String getParam() {
+		return this.parameters;
 	}
 }
