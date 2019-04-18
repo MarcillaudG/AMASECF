@@ -3,7 +3,7 @@ package messages;
  * 
  * @author gmarcill
  *
- *Message used to share the criticality between agent
+ * Message used to share the criticality between agent
  *
  */
 public class MessageCriticality {
