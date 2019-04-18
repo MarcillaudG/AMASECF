@@ -206,7 +206,6 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			}*/
 			break;
 		case RANDOM:
-
 			// The agent decide which parameters to communicate
 			int nbCom = 0;
 			// Communication of the parameters useful
@@ -278,7 +277,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			System.out.println(this.name + " : ORACLE : "+oracle);
 			break;
 		case RANDOM:
-
+			
 			// Compute the calcul
 			double resSum = this.myFunctionSum.compute(this.parameters);
 
@@ -310,9 +309,13 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			break;
 
 		}
-
-		//this.resultHistory.add(oracle);
-		//this.history.add(new TreeMap<String,Double>(this.parameters));
+	}
+	
+	/**
+	 * Calcul the criticality of the agent
+	 */
+	protected void computeMyCriticality() {
+		this.criticality = this.parametersUseful.size();
 	}
 
 	/**
