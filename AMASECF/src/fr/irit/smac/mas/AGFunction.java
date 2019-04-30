@@ -308,7 +308,7 @@ protected void onAct() {
 
 
 		// Send the messages for the next cycle
-		this.getAmas().CommunicateMessageLinks(this.parametersToCommunicate,this.name);
+		this.getAmas().CommunicateMessageLinks(this.parametersToCommunicate,this.name,this);
 
 		// Send the message to share the value of a parameter for the next cycle
 		for(AGFunction agf : this.getAmas().getNeighborhood(this)) {
@@ -321,9 +321,6 @@ protected void onAct() {
 		for(String param : this.agentsToThanks.keySet()) {
 			this.sendMessage(new MessageNotify(param), this.agentsToThanks.get(param));
 			this.getAmas().notifyLinksVariableUseful(param,this.name);
-			if(this.name.equals("function0")) {
-				System.out.println("THANKS : "+this.agentsToThanks.keySet().size());
-			}
 		}
 
 		// Send the message to discuss of whom share the parameters
@@ -449,6 +446,9 @@ public boolean equals(Object obj) {
 	} else if (!name.equals(other.name))
 		return false;
 	return true;
+}
+public List<String> getFixes(){
+	return this.parametersFixes;
 }
 
 

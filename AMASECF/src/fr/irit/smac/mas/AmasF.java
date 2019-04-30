@@ -26,6 +26,14 @@ import fr.irit.smac.lxplot.commons.ChartType;
 import fr.irit.smac.lxplot.server.LxPlotChart;
 import fr.irit.smac.mas.EnvironmentF.Expe;
 import fr.irit.smac.visu.LinksFileReader;
+import links2.driver.connection.LinksConnection;
+import links2.driver.connection.LocalLinksConnection;
+import links2.driver.marshaler.Link2DriverMarshaler;
+import links2.driver.marshaler.MarshallingMode;
+import links2.driver.model.Entity;
+import links2.driver.model.Experiment;
+import links2.driver.model.Relation;
+import links2.driver.model.Snapshot;
 import messages.MessageParameter;
 
 public class AmasF extends Amas<EnvironmentF>{
@@ -59,6 +67,12 @@ public class AmasF extends Amas<EnvironmentF>{
 
 	private FileWriter writer;
 
+	private Snapshot snapshot;
+
+	private Experiment experiment;
+
+	private List<Relation> relationsToLinks;
+
 
 	/**
 	 * Constructor used by the test
@@ -69,6 +83,9 @@ public class AmasF extends Amas<EnvironmentF>{
 	public AmasF(EnvironmentF environment, Scheduling scheduling, Object[] params) {
 		super(environment, scheduling, params);
 
+
+		//Create a new experiment
+		experiment = new Experiment("My experimentName");
 		this.fileLinks = new File("linksexpe.txt");
 		try {
 			this.writer = new FileWriter(this.fileLinks);
@@ -350,6 +367,14 @@ public class AmasF extends Amas<EnvironmentF>{
 			}
 			break;
 		case RANDOM:
+			this.relationsToLinks = new ArrayList<Relation>();
+			//Create a new snapshot
+			snapshot = new Snapshot();
+			snapshot.setSnapshotNumber((long) this.getCycle());
+			for(AGFunction agf : this.allAGFunctions.values()) {
+				Entity ent = new Entity(agf.getName(),"AGFunction");
+				this.snapshot.addEntity(ent);
+			}
 			try {
 				this.writer.write("Cycle : "+this.getCycle()+"\n");
 			} catch (IOException e) {
@@ -388,6 +413,17 @@ public class AmasF extends Amas<EnvironmentF>{
 				}
 				this.parametersUsefulLastCycle = new TreeSet<String>();
 				this.parametersUsefulLastCycle.addAll(this.parametersUseful);
+
+				for(Relation r : this.relationsToLinks) {
+					this.snapshot.addRelation(r);
+					try {
+						this.writer.write("ADD REL,"+ r.getNodeAid()+","+ r.getNodeBid()+",Receive,"+ r.getNodeAid() +",Reception \n");
+					} catch (IOException e) {
+						System.err.println("ERROR ADD REL");
+					}
+				}
+				// Add the snapshot into the experiment
+				experiment.addSnapshot(this.snapshot);
 				try {
 					this.writer.write("END Cycle\n");
 				} catch (IOException e) {
@@ -408,6 +444,16 @@ public class AmasF extends Amas<EnvironmentF>{
 			}
 		}
 		if(this.getCycle() == 100) {
+
+			//Helper to get connection with default parameters
+			LinksConnection connection = LocalLinksConnection.getLocalConnexion();
+
+			//Save the experiment 
+			Link2DriverMarshaler.marshalling(connection, experiment, MarshallingMode.OVERRIDE_EXP_IF_EXISTING);
+
+			//Don't forget to close the DB connection
+			connection.close();
+
 			try {
 				this.writer.close();
 				this.getScheduler().stop();
@@ -490,6 +536,7 @@ public class AmasF extends Amas<EnvironmentF>{
 
 	public Double getValueOfParameters(String s, AGFunction agf) {
 		double value = this.environment.getValueOfVariable(s);
+		// TODO add attribute
 		try {
 			this.writer.write("ADD Fixe,"+agf.getName()+","+s+","+value+"\n");
 		} catch (IOException e) {
@@ -522,6 +569,9 @@ public class AmasF extends Amas<EnvironmentF>{
 
 	public void communicateValueOfVariable(String s, Double double1, AGFunction agf) {
 		this.network.put(s, double1);
+		Entity var = new Entity(s,"Variable");
+		this.snapshot.addEntity(var);
+		this.snapshot.addRelation(new Relation(agf.getName() + " send the variable "+s, agf.getName(), s, true, "Send variable"));
 		try {
 			this.writer.write("ADD VAR,"+s+"\n");
 			this.writer.write(agf.getName()+","+ s+  ",isCommunicated,"+ "Communication\n");
@@ -541,6 +591,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		if(this.network.containsKey(s)) {
 			res = network.get(s);
 			this.parametersUseful.add(s);
+			this.snapshot.addRelation(new Relation(agf.getName() + " receive the variable "+s, s, agf.getName(), true, "Receive variable"));
 			try {
 				this.writer.write("ADD REL,"+ s+","+ agf.getName()+",Receive,"+s +",Reception \n");
 			} catch (IOException e) {
@@ -581,9 +632,12 @@ public class AmasF extends Amas<EnvironmentF>{
 	 * @param parametersToCommunicate
 	 * @param name
 	 */
-	public void CommunicateMessageLinks(Set<MessageParameter> parametersToCommunicate,String name) {
+	public void CommunicateMessageLinks(Set<MessageParameter> parametersToCommunicate,String name, AGFunction agf) {
 		for(MessageParameter mess : parametersToCommunicate) {
 			String s = mess.getName();
+			Entity var = new Entity(s,"Variable");
+			this.snapshot.addEntity(var);
+			this.snapshot.addRelation(new Relation(agf.getName() + " send the variable "+s, agf.getName(), s, true, "Send variable"));
 			try {
 				this.writer.write("ADD VAR,"+s+"\n");
 				this.writer.write(name+","+ s+  ",isCommunicated,"+ "Communication\n");
@@ -601,12 +655,14 @@ public class AmasF extends Amas<EnvironmentF>{
 	 * The name of the function
 	 */
 	public void notifyLinksVariableUseful(String param, String agName) {
-
+		Relation r = new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable");
+		this.relationsToLinks.add(r);
+		/*this.snapshot.addRelation(new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable"));
 		try {
 			this.writer.write("ADD REL,"+ param+","+ agName+",Receive,"+param +",Reception \n");
 		} catch (IOException e) {
 			System.err.println("ERROR ADD REL");
-		}
+		}*/
 	}
 
 }
