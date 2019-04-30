@@ -373,6 +373,9 @@ public class AmasF extends Amas<EnvironmentF>{
 			snapshot.setSnapshotNumber((long) this.getCycle());
 			for(AGFunction agf : this.allAGFunctions.values()) {
 				Entity ent = new Entity(agf.getName(),"AGFunction");
+				Map<String,Object> map = new TreeMap<String,Object>();
+				map.put("Name", agf.getName());
+				ent.setAttributeMap(map);
 				this.snapshot.addEntity(ent);
 			}
 			try {
