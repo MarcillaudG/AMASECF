@@ -1,4 +1,6 @@
 package fr.irit.smac.mas;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -17,10 +19,10 @@ import fr.irit.smac.amak.aid.AID;
 import fr.irit.smac.amak.messaging.IAmakEnvelope;
 import fr.irit.smac.functions.LPDFunction;
 import fr.irit.smac.functions.SumFunction;
-import messages.MessageCriticality;
-import messages.MessageNotify;
-import messages.MessageParameter;
-import messages.SimpleEnvelope;
+import fr.irit.smac.messages.MessageCriticality;
+import fr.irit.smac.messages.MessageNotify;
+import fr.irit.smac.messages.MessageParameter;
+import fr.irit.smac.messages.SimpleEnvelope;
 
 public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
@@ -41,6 +43,13 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 	private int criticality = 0;
 
+	
+	// Variable to send to the ui
+	private int nb_sended = 0;
+	private int old_nb_sended = 0;
+	private int nb_receive = 0;
+	private int old_nb_receive = 0;
+	
 	private List<String> flow;
 
 
@@ -61,6 +70,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private LPDFunction myFunctionLPD;
 	private SumFunction myFunctionSum;
 
+	private PropertyChangeSupport support;
+
 	private double feedback;
 	public AGFunction(AmasF amas, Object[] params, String name) {
 		super(amas, params);
@@ -74,7 +85,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		this.parametersNotUseful = new TreeSet<String>();
 		this.parametersCommunicated = new TreeSet<String>();
 		this.parametersUsefulButShared = new TreeSet<String>();
-
+		this.support = new PropertyChangeSupport(this);
 
 
 		this.flow = new ArrayList<String>();
@@ -102,6 +113,12 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 	@Override
 	protected void onPerceive() {
+		
+		this.old_nb_receive = this.nb_receive;
+		this.nb_receive = 0;
+		this.old_nb_sended = this.nb_sended;
+		this.nb_sended = 0;
+		
 		switch(getAmas().getEnvironment().getExpe()) {
 		case LPD:
 			// Recuperation du voisinage
@@ -149,6 +166,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 					if(this.parametersVariables.contains(param.getName())) {
 						this.parameters.put(param.getName(), param.getValue());
 						this.agentsToThanks.put(param.getName(), env.getMessageSenderAID());
+						this.nb_receive++;
 					}
 					// If someone else share the same parameters
 					if(this.parametersFixes.contains(param.getName())) {
@@ -165,55 +183,55 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 						}
 					}
 
-				// Case of a notify is sent to notify that a parameter is useful to send
-				else {
-					MessageNotify notif = (MessageNotify)env.getMessage();
-					this.parametersUseful.add(notif.getName());
-				}
-			}
-		}
-
-		// Ask for the type of the variable
-		for(String s : this.parametersVariables) {
-			getAmas().CommunicateNeedOfVariableType(s);
-		}
-
-		//this.parametersUseful.addAll(getAmas().isParametersUseful(this.parametersFixes));
-
-		// Remove the parameters communicated but useless
-		this.parametersCommunicated.removeAll(this.parametersUseful);
-		this.parametersNotUseful.addAll(this.parametersCommunicated);
-		this.parametersCommunicated = new TreeSet<String>();
-
-
-		criticality = this.parametersUseful.size();
-
-
-
-		break;
-	default:
-		break;
-
-	}
-}
-
-@Override
-protected void onDecide() {
-	switch(getAmas().getEnvironment().getExpe()) {
-	case LPD:
-		// Si le resultat precedent est faux on cherche de nouvelles informations
-		if(this.feedback > 1.0) {
-			for(AGFunction ag : this.neighbours) {
-				for(String s : ag.flow) {
-					if(!this.flow.contains(s) && this.getAmas().isParameterUseful(s, this)) {
-						this.flow.add(s);
-						//this.dataCommunicated.add(s);
+					// Case of a notify is sent to notify that a parameter is useful to send
+					else {
+						MessageNotify notif = (MessageNotify)env.getMessage();
+						this.parametersUseful.add(notif.getName());
 					}
 				}
 			}
+
+			// Ask for the type of the variable
+			for(String s : this.parametersVariables) {
+				getAmas().CommunicateNeedOfVariableType(s);
+			}
+
+			//this.parametersUseful.addAll(getAmas().isParametersUseful(this.parametersFixes));
+
+			// Remove the parameters communicated but useless
+			this.parametersCommunicated.removeAll(this.parametersUseful);
+			this.parametersNotUseful.addAll(this.parametersCommunicated);
+			this.parametersCommunicated = new TreeSet<String>();
+
+
+			criticality = this.parametersUseful.size();
+
+
+
+			break;
+		default:
+			break;
+
 		}
-		// Recuperation des donnes par communication
-		/*Set<String> dataMisses = new TreeSet<String>(this.dataCommunicated);
+	}
+
+	@Override
+	protected void onDecide() {
+		switch(getAmas().getEnvironment().getExpe()) {
+		case LPD:
+			// Si le resultat precedent est faux on cherche de nouvelles informations
+			if(this.feedback > 1.0) {
+				for(AGFunction ag : this.neighbours) {
+					for(String s : ag.flow) {
+						if(!this.flow.contains(s) && this.getAmas().isParameterUseful(s, this)) {
+							this.flow.add(s);
+							//this.dataCommunicated.add(s);
+						}
+					}
+				}
+			}
+			// Recuperation des donnes par communication
+			/*Set<String> dataMisses = new TreeSet<String>(this.dataCommunicated);
 			int i = 0;
 			while(dataMisses.size() > 0 && i < this.neighbours.size()) {
 				AGFunction agf = this.neighbours.get(i);
@@ -225,232 +243,245 @@ protected void onDecide() {
 				}
 
 			}*/
-		break;
-	case RANDOM:
-		// The agent decide which parameters to communicate
-		int nbCom = 0;
-		// Communication of the parameters useful
-		for(String variableUseful : this.parametersUseful) {
-			nbCom++;
-			MessageParameter param = new MessageParameter(variableUseful, this.parameters.get(variableUseful));
-			this.parametersToCommunicate.add(param);
-			// this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
-			this.parametersCommunicated.add(variableUseful);
+			break;
+		case RANDOM:
+			// The agent decide which parameters to communicate
+			int nbCom = 0;
+			// Communication of the parameters useful
+			for(String variableUseful : this.parametersUseful) {
+				nbCom++;
+				MessageParameter param = new MessageParameter(variableUseful, this.parameters.get(variableUseful));
+				this.parametersToCommunicate.add(param);
+				// this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
+				this.parametersCommunicated.add(variableUseful);
+			}
+
+			// Communication of the parameters remaining
+			List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
+			variablesRemaining.removeAll(this.parametersUseful);
+			variablesRemaining.removeAll(parametersNotUseful);
+			for(int j = 0; j < variablesRemaining.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
+				String s = variablesRemaining.get(j);
+				MessageParameter param = new MessageParameter(s, this.parameters.get(s));
+				//this.getAmas().communicateValueOfVariable(s,this.parameters.get(s),this);
+				this.parametersToCommunicate.add(param);
+				nbCom++;
+				this.parametersCommunicated.add(s);
+			}
+
+
+			break;
+		default:
+			break;
+
 		}
+	}
 
-		// Communication of the parameters remaining
-		List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
-		variablesRemaining.removeAll(this.parametersUseful);
-		variablesRemaining.removeAll(parametersNotUseful);
-		for(int j = 0; j < variablesRemaining.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
-			String s = variablesRemaining.get(j);
-			MessageParameter param = new MessageParameter(s, this.parameters.get(s));
-			//this.getAmas().communicateValueOfVariable(s,this.parameters.get(s),this);
-			this.parametersToCommunicate.add(param);
-			nbCom++;
-			this.parametersCommunicated.add(s);
+	/**
+	 * Ask a neighbour the informations
+	 */
+	private void searchForInformation() {
+		int i = 0;
+		boolean end = false;
+		for(AGFunction agf : this.neighbours) {
+			this.exchangeInformation(agf.parameters.keySet());
 		}
-
-
-		break;
-	default:
-		break;
-
+		this.initHistory();
 	}
-}
 
-/**
- * Ask a neighbour the informations
- */
-private void searchForInformation() {
-	int i = 0;
-	boolean end = false;
-	for(AGFunction agf : this.neighbours) {
-		this.exchangeInformation(agf.parameters.keySet());
-	}
-	this.initHistory();
-}
-
-/**
- * Partage d'information a une autre fonction
- * @param parameters2
- * @return Map avec les couples parametres et valeurs
- * TODO Communication des donnees communiquees 
- */
-private Map<String, Double> exchangeInformation(Set<String> parameters2) {
-	Map<String, Double> ret = new TreeMap<String,Double>();
-	for(String s : parameters2) {
-		/*if(this.dataPerceived.contains(s)) {
+	/**
+	 * Partage d'information a une autre fonction
+	 * @param parameters2
+	 * @return Map avec les couples parametres et valeurs
+	 * TODO Communication des donnees communiquees 
+	 */
+	private Map<String, Double> exchangeInformation(Set<String> parameters2) {
+		Map<String, Double> ret = new TreeMap<String,Double>();
+		for(String s : parameters2) {
+			/*if(this.dataPerceived.contains(s)) {
 				ret.put(s, this.getAmas().getFlow(s));
 			}*/
+		}
+		return ret;
 	}
-	return ret;
-}
 
-@Override
-protected void onAct() {
-	switch(getAmas().getEnvironment().getExpe()) {
-	case LPD:
-		double res = this.myFunctionLPD.compute();
-		System.out.println(this.name + " RESULTAT : "+res);
-		double oracle = this.getAmas().getValueOracle(this.name);
-		feedback = Math.abs(res - oracle);
-		System.out.println(this.name + " : ORACLE : "+oracle);
-		break;
-	case RANDOM:
+	@Override
+	protected void onAct() {
+		switch(getAmas().getEnvironment().getExpe()) {
+		case LPD:
+			double res = this.myFunctionLPD.compute();
+			System.out.println(this.name + " RESULTAT : "+res);
+			double oracle = this.getAmas().getValueOracle(this.name);
+			feedback = Math.abs(res - oracle);
+			System.out.println(this.name + " : ORACLE : "+oracle);
+			break;
+		case RANDOM:
 
-		// Compute the calcul
-		double resSum = this.myFunctionSum.compute(this.parameters);
+			// Compute the calcul
+			double resSum = this.myFunctionSum.compute(this.parameters);
 
-		double oracleSum = this.getAmas().getValueOracle(this.name);
+			double oracleSum = this.getAmas().getValueOracle(this.name);
 
-		feedback = Math.abs(resSum - oracleSum);
+			feedback = Math.abs(resSum - oracleSum);
 
 
-		// Send the messages for the next cycle
-		this.getAmas().CommunicateMessageLinks(this.parametersToCommunicate,this.name,this);
+			// Send the messages for the next cycle
+			this.getAmas().CommunicateMessageLinks(this.parametersToCommunicate,this.name,this);
 
-		// Send the message to share the value of a parameter for the next cycle
-		for(AGFunction agf : this.getAmas().getNeighborhood(this)) {
-			for(MessageParameter mess : this.parametersToCommunicate) {
-				this.sendMessage(mess, agf.getAID());
+			// Send the message to share the value of a parameter for the next cycle
+			for(AGFunction agf : this.getAmas().getNeighborhood(this)) {
+				for(MessageParameter mess : this.parametersToCommunicate) {
+					this.sendMessage(mess, agf.getAID());
+				}
 			}
-		}
+			this.nb_sended = this.parametersUseful.size();
 
-		// Send the message to notify the usefulness of a parameter
-		for(String param : this.agentsToThanks.keySet()) {
-			this.sendMessage(new MessageNotify(param), this.agentsToThanks.get(param));
-			this.getAmas().notifyLinksVariableUseful(param,this.name);
-		}
+			// Send the message to notify the usefulness of a parameter
+			for(String param : this.agentsToThanks.keySet()) {
+				this.sendMessage(new MessageNotify(param), this.agentsToThanks.get(param));
+				this.getAmas().notifyLinksVariableUseful(param,this.name);
+			}
 
-		// Send the message to discuss of whom share the parameters
-		for(String param : this.agentsToDiscuss.keySet()) {
-			this.sendMessage(new MessageCriticality(param,this.criticality),this.agentsToDiscuss.get(param));
-		}
-		break;
-	default:
-		break;
+			// Send the message to discuss of whom share the parameters
+			for(String param : this.agentsToDiscuss.keySet()) {
+				this.sendMessage(new MessageCriticality(param,this.criticality),this.agentsToDiscuss.get(param));
+			}
+			
+			this.support.firePropertyChange("SENT", this.old_nb_sended, this.nb_sended);
+			
+			this.support.firePropertyChange("RECEIVE", this.old_nb_receive, this.nb_receive);
+			break;
+		default:
+			break;
 
+		}
 	}
-}
 
-/**
- * Calcul the criticality of the agent
- */
-protected void computeMyCriticality() {
-	this.criticality = this.parametersUseful.size();
-}
+	/**
+	 * Calcul the criticality of the agent
+	 */
+	protected void computeMyCriticality() {
+		this.criticality = this.parametersUseful.size();
+	}
 
-/**
- * getter on name
- * @return name
- */
-public String getName() {
-	return this.name;
-}
+	/**
+	 * getter on name
+	 * @return name
+	 */
+	public String getName() {
+		return this.name;
+	}
 
-/**
- * Add a new parameter
- * @param s
- * 	the name of the parameter
- * @param coeff
- * 	the coefficient
- */
-protected void addParameter(String s) {
-	this.parameters.put(s, 1.0);
-}
+	/**
+	 * Add a new parameter
+	 * @param s
+	 * 	the name of the parameter
+	 * @param coeff
+	 * 	the coefficient
+	 */
+	protected void addParameter(String s) {
+		this.parameters.put(s, 1.0);
+	}
 
-@Override
-public String toString() {
-	return "AGFunction [parameters=" + parameters +  ", name=" + name + ", feedback="
-			+ feedback + "]";
-}
-
-
-public void addDataPerceived(String data) {
-	//this.dataPerceived.add(data);
-}
-
-public void setFunction(LPDFunction fun) {
-	this.myFunctionLPD = fun;
-}
-
-public void setLength(String length) {
-
-	this.addParameter(length);
-	this.addDataPerceived(length);
-	this.length = length;
-}
-
-public void setSpeed(String speed) {
-	this.addParameter(speed);
-	this.addDataPerceived(speed);
-	this.speed =speed;
-}
-
-public void setC(String c) {
-	this.addParameter(c);
-	this.addDataPerceived(c);
-	this.capacity = c;
-}
-
-public void addFlow(String flow) {
-	this.flow.add(flow);
-}
-
-public double computeLPD() {
-	return this.myFunctionLPD.compute();
-}
-
-public void addParameterFixe(String variable) {
-	this.parametersFixes.add(variable);
-}
+	@Override
+	public String toString() {
+		return "AGFunction [parameters=" + parameters +  ", name=" + name + ", feedback="
+				+ feedback + "]";
+	}
 
 
-public void addParameterVariable(String variable) {
-	this.parametersVariables.add(variable);
-}
+	public void addDataPerceived(String data) {
+		//this.dataPerceived.add(data);
+	}
 
-public double computeSum() {
-	return this.myFunctionSum.compute(this.parameters);
-}
+	public void setFunction(LPDFunction fun) {
+		this.myFunctionLPD = fun;
+	}
 
-public Map<String,Double> getParameterAndValue() {
-	return this.parameters;
-}
+	public void setLength(String length) {
 
-public Set<String> getParametersVariables() {
-	return this.parametersVariables;
-}
+		this.addParameter(length);
+		this.addDataPerceived(length);
+		this.length = length;
+	}
 
-@Override
-public int hashCode() {
-	final int prime = 31;
-	int result = 1;
-	result = prime * result + ((name == null) ? 0 : name.hashCode());
-	return result;
-}
+	public void setSpeed(String speed) {
+		this.addParameter(speed);
+		this.addDataPerceived(speed);
+		this.speed =speed;
+	}
 
-@Override
-public boolean equals(Object obj) {
-	if (this == obj)
-		return true;
-	if (obj == null)
-		return false;
-	if (getClass() != obj.getClass())
-		return false;
-	AGFunction other = (AGFunction) obj;
-	if (name == null) {
-		if (other.name != null)
+	public void setC(String c) {
+		this.addParameter(c);
+		this.addDataPerceived(c);
+		this.capacity = c;
+	}
+
+	public void addFlow(String flow) {
+		this.flow.add(flow);
+	}
+
+	public double computeLPD() {
+		return this.myFunctionLPD.compute();
+	}
+
+	public void addParameterFixe(String variable) {
+		this.parametersFixes.add(variable);
+	}
+
+
+	public void addParameterVariable(String variable) {
+		this.parametersVariables.add(variable);
+	}
+
+	public double computeSum() {
+		return this.myFunctionSum.compute(this.parameters);
+	}
+
+	public Map<String,Double> getParameterAndValue() {
+		return this.parameters;
+	}
+
+	public Set<String> getParametersVariables() {
+		return this.parametersVariables;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
 			return false;
-	} else if (!name.equals(other.name))
-		return false;
-	return true;
-}
-public List<String> getFixes(){
-	return this.parametersFixes;
-}
+		if (getClass() != obj.getClass())
+			return false;
+		AGFunction other = (AGFunction) obj;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
+			return false;
+		return true;
+	}
+	public List<String> getFixes(){
+		return this.parametersFixes;
+	}
 
+
+	public void addPropertyChangeListener(PropertyChangeListener pcl) {
+		support.addPropertyChangeListener(pcl);
+	}
+
+	public void removePropertyChangeListener(PropertyChangeListener pcl) {
+		support.removePropertyChangeListener(pcl);
+	}
 
 
 }

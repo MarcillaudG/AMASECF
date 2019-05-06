@@ -1,12 +1,11 @@
 package fr.irit.smac.mas;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.List;
@@ -14,17 +13,14 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.commons.lang3.tuple.Pair;
-
-import fr.irit.smac.amak.Agent;
 import fr.irit.smac.amak.Amas;
 import fr.irit.smac.amak.Configuration;
 import fr.irit.smac.amak.Scheduling;
 import fr.irit.smac.functions.OracleFunction;
 import fr.irit.smac.lxplot.LxPlot;
 import fr.irit.smac.lxplot.commons.ChartType;
-import fr.irit.smac.lxplot.server.LxPlotChart;
-import fr.irit.smac.mas.EnvironmentF.Expe;
+import fr.irit.smac.messages.MessageParameter;
+import fr.irit.smac.modelui.AGFModel;
 import fr.irit.smac.visu.LinksFileReader;
 import links2.driver.connection.LinksConnection;
 import links2.driver.connection.LocalLinksConnection;
@@ -34,7 +30,6 @@ import links2.driver.model.Entity;
 import links2.driver.model.Experiment;
 import links2.driver.model.Relation;
 import links2.driver.model.Snapshot;
-import messages.MessageParameter;
 
 public class AmasF extends Amas<EnvironmentF>{
 
@@ -72,6 +67,8 @@ public class AmasF extends Amas<EnvironmentF>{
 	private Experiment experiment;
 
 	private List<Relation> relationsToLinks;
+	
+	private PropertyChangeSupport support;
 
 
 	/**
@@ -116,6 +113,7 @@ public class AmasF extends Amas<EnvironmentF>{
 	 */
 	public AmasF(EnvironmentF environment, Object[] params) {
 		super(environment, Scheduling.DEFAULT, params);
+		experiment = new Experiment("My experimentName");
 		this.fileLinks = new File("linksexpe.txt");
 		try {
 			this.writer = new FileWriter(this.fileLinks);
@@ -215,6 +213,10 @@ public class AmasF extends Amas<EnvironmentF>{
 	 * @throws IOException 
 	 */
 	private void initRandom() throws IOException {
+		//Init Listener
+		this.support = new PropertyChangeSupport(this);
+		
+		
 		// init of collections
 		this.oracle = new TreeMap<String,OracleFunction>();
 		this.allAGFunctions = new TreeMap<String,AGFunction>();
@@ -432,14 +434,8 @@ public class AmasF extends Amas<EnvironmentF>{
 				} catch (IOException e) {
 					System.err.println("ERROR END CYCLE");
 				}
-
-				//System.out.println(this.parametersUsefulLastCycle);
-				/*System.out.println("CYCLE : "+this.cycle);
-				for(String s : this.allAGFunctions.get("function 0").getParameterAndValue().keySet()) {
-					if(this.allAGFunctions.get("function 0").getParameterAndValue().get(s) == 0.0) {
-						System.out.println("MISSING VARIABLE : "+s);
-					}
-				}*/
+				// Notify to all listener
+				this.support.firePropertyChange("End cycle", this.cycle-1, this.cycle);
 				break;
 			default:
 				break;
@@ -667,5 +663,24 @@ public class AmasF extends Amas<EnvironmentF>{
 			System.err.println("ERROR ADD REL");
 		}*/
 	}
+	
+	/**
+	 * Return a new collection with all agfunction
+	 * @return
+	 */
+	public List<AGFunction> getAllAGF(){
+		return new ArrayList<AGFunction>(this.allAGFunctions.values());
+	}
+	
+	public void addPropertyChangeListener(AGFModel pcl,String name) {
+        this.allAGFunctions.get(name).addPropertyChangeListener(pcl);
+    }
+ 
+    public void removePropertyChangeListener(AGFModel pcl,String name) {
+    	this.allAGFunctions.get(name).removePropertyChangeListener(pcl);
+    }
+
+
+
 
 }

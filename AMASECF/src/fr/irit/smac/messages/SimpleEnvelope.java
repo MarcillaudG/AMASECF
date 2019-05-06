@@ -1,4 +1,4 @@
-package messages;
+package fr.irit.smac.messages;
 
 
 import fr.irit.smac.amak.aid.AddressableAID;
