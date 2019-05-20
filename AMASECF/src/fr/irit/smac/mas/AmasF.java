@@ -621,13 +621,14 @@ public class AmasF extends Amas<EnvironmentF>{
 	public void notifyLinksVariableUseful(String param, String agName) {
 		Relation r = new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable");
 		this.relationsToLinks.add(r);
-		/*this.snapshot.addRelation(new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable"));
-		try {
-			this.writer.write("ADD REL,"+ param+","+ agName+",Receive,"+param +",Reception \n");
-		} catch (IOException e) {
-			System.err.println("ERROR ADD REL");
-		}*/
+		/*this.snapshot.addRelation(new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable"));*/
 	}
+	
+	public void setCriticityLinks(String agfName,int crit) {
+		this.snapshot.getEntityGivenID(agfName).setAttribute("Criticity", crit);
+	}
+	
+	
 	
 	/**
 	 * Return a new collection with all agfunction
@@ -668,68 +669,13 @@ public class AmasF extends Amas<EnvironmentF>{
 	}
 
 
-	/**
-	 * 
-	 */
-	private void updateAGFDataModels() {
-		for(AGFDataModel agfd : this.agfDataModels) {
 
-			AGFunction agf = this.allAGFunctions.get(agfd.getName());
-			
-			// old values
-			ListProperty<StringProperty> old_neighbours = new SimpleListProperty<StringProperty>(agfd.getNeighbours());
-			ListProperty<Receiver> old_receivers = new SimpleListProperty<Receiver>(agfd.getReceivers());
-			ListProperty<Sender> old_senders = new SimpleListProperty<Sender>(agfd.getSender());
-	
-			
-			// New values
-			ObservableList<StringProperty> observableList1 = FXCollections.observableArrayList();
-			ObservableList<Receiver> observableList2 = FXCollections.observableArrayList();
-			ObservableList<Sender> observableList3 = FXCollections.observableArrayList();
-			//Set the neighbours
-			ListProperty<StringProperty> neighbours = new SimpleListProperty<StringProperty>(observableList1);
-			ListProperty<Receiver> receivers = new SimpleListProperty<Receiver>(observableList2);
-			ListProperty<Sender> senders = new SimpleListProperty<Sender>(observableList3);
-			
-			
-			for(AGFunction agf2 : this.askNeighbourgs(agf)) {
-				neighbours.add(new SimpleStringProperty(agf2.getName()));
-				
-				// Set the receivers
-				for(String param : agf.getParametersToCommunicate()) {
-					if(agf2.getParametersVariables().contains(param)) {
-						receivers.add(agfd.createReceiver(new SimpleStringProperty(param),new SimpleStringProperty(agf2.getName())));
-					}
-				}
-				
-				// set the senders
-				for(String param : agf.getParametersVariables()) {
-					Sender send = agfd.createSender(new SimpleStringProperty(param),false);
-					if(agf2.getParametersToCommunicate().contains(param)) {
-						send.setReceive(true);
-					}
-					List<StringProperty> whos = new ArrayList<StringProperty>();
-					if(agf2.getFixes().contains(param)) {
-						whos.add(new SimpleStringProperty(agf2.getName()));
-					}
-					if(whos.isEmpty()) {
-						whos.add(new SimpleStringProperty("No one"));
-					}
-					send.setWho(whos);
-					senders.add(send);
-				}
-				
-			}
-			agfd.setAll(neighbours, receivers, senders);
-		}
-		this.supportAGFD.firePropertyChange("Update", this.getCycle()-1, this.getCycle());
-	}
 
 	/**
 	 * For the UI
 	 * @param name
 	 * 
-	 * @return a neighbour model
+	 * @return a neighbor model
 	 */
 	public NeighbourModel createNeighbourModel(String name) {
 		NeighbourModel res = new NeighbourModel();
@@ -759,6 +705,10 @@ public class AmasF extends Amas<EnvironmentF>{
 		ReceiverModel res = new ReceiverModel();
 		this.allAGFunctions.get(name).addPropertyChangeListener(res);
 		return res;
+	}
+
+	public AGFunction getAgentWithName(String name) {
+		return this.allAGFunctions.get(name);
 	}
 
 

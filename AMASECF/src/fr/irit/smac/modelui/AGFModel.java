@@ -17,6 +17,8 @@ public class AGFModel implements PropertyChangeListener{
 	
 	private final IntegerProperty nbParamsReceive;
 	
+	private final IntegerProperty criticality;
+	
 	
 	public AGFModel(String name) {
 		this.name = new SimpleStringProperty(name);
@@ -24,6 +26,8 @@ public class AGFModel implements PropertyChangeListener{
 		this.nbParamsSent = new SimpleIntegerProperty(0);
 
 		this.nbParamsReceive = new SimpleIntegerProperty(0);
+		
+		this.criticality = new SimpleIntegerProperty(0);
 	}
 
 
@@ -48,6 +52,14 @@ public class AGFModel implements PropertyChangeListener{
 	public void setNbParamsReceive(int nb) {
 		this.nbParamsReceive.set(nb);
 	}
+	
+	public void setCriticality(int crit) {
+		this.criticality.set(crit);
+	}
+	
+	public IntegerProperty getCriticality() {
+		return this.criticality;
+	}
 
 
 	@Override
@@ -57,6 +69,9 @@ public class AGFModel implements PropertyChangeListener{
 		}
 		if(evt.getPropertyName().equals("SENT")) {
 			this.nbParamsSent.set((Integer)evt.getNewValue());
+		}
+		if(evt.getPropertyName().equals("CRITICALITY")){
+			this.criticality.set((Integer)evt.getNewValue());
 		}
 		
 	}

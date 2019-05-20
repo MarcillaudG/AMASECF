@@ -21,6 +21,7 @@ import fr.irit.smac.amak.messaging.IAmakEnvelope;
 import fr.irit.smac.functions.LPDFunction;
 import fr.irit.smac.functions.SumFunction;
 import fr.irit.smac.messages.MessageCriticality;
+import fr.irit.smac.messages.MessageNeighbour;
 import fr.irit.smac.messages.MessageNotify;
 import fr.irit.smac.messages.MessageParameter;
 import fr.irit.smac.messages.SimpleEnvelope;
@@ -36,6 +37,9 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 	private String name;
 
+	private Map<String,AID> neighborsAID;
+	private Set<String> old_neighborsAID;
+	
 	private List<AGFunction> neighbours;
 	private List<AGFunction> old_neighbours;
 
@@ -133,6 +137,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private boolean nmodel;
 	private boolean smodel;
 
+	private Object old_criticality;
+
 	public AGFunction(AmasF amas, Object[] params, String name) {
 		super(amas, params);
 
@@ -146,6 +152,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		// Collections for UI
 		this.neighbours = new ArrayList<AGFunction>();
 		this.old_neighbours = new ArrayList<AGFunction>();
+		this.neighborsAID = new TreeMap<String,AID>();
+		this.old_neighborsAID = new TreeSet<String>();
 
 		// Collections for the agent
 		this.parametersFixes = new ArrayList<String>();
@@ -196,6 +204,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		this.nb_receive = 0;
 		this.old_nb_sended = this.nb_sended;
 		this.nb_sended = 0;
+		
+		this.old_criticality = this.criticality;
 
 		this.old_neighbours = this.neighbours;
 		this.neighbours = new ArrayList<AGFunction>();
@@ -229,66 +239,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			for(String s : this.parametersFixes) {
 				this.parameters.put(s, this.getAmas().getValueOfParameters(s,this));
 			}
-			int i = 0;
-			// Reading of all messages
-			int nbTest = 0;
-			for(IAmakEnvelope env : this.getAllMessages()) {
-
-				// Case of a parameters is sent
-				if(env.getMessage() instanceof MessageParameter) {
-					MessageParameter param = (MessageParameter)env.getMessage();
-					// Getting the data if it is useful
-					if(this.parametersVariables.contains(param.getName())) {
-						if(!this.agentsToThanks.keySet().contains(param.getName())) {
-							this.parameters.put(param.getName(), param.getValue());
-							this.support.firePropertyChange("SM RECEIVE", param.getName(), param.getValue());
-							this.nb_receive++;
-						}
-						this.agentsToThanks.put(param.getName(), env.getMessageSenderAID());
-					}
-
-					// If someone else share the same parameters
-					if(this.parametersFixes.contains(param.getName())) {
-						if(this.parametersUseful.contains(param.getName())) {
-							this.agentsToDiscuss.put(param.getName(), env.getMessageSenderAID());
-						}
-					}
-					else {
-						if(this.parametersObtainFromNeighboursToSend.keySet().contains(param.getName())) {
-							if(this.parametersObtainFromNeighboursToSend.get(param.getName()).getNbJump() >= param.getNbJump()) {
-								this.parametersObtainFromNeighboursToSend.put(param.getName(),param);
-								this.parametersObtainFromNeighbours.put(param.getName(), env.getMessageSenderAID());
-							}
-						}
-						else {
-							this.parametersObtainFromNeighboursToSend.put(param.getName(),param);
-							this.parametersObtainFromNeighbours.put(param.getName(), env.getMessageSenderAID());
-						}
-					}
-				}
-				else {
-					// Case of a message about criticality
-					if(env.getMessage() instanceof MessageCriticality) {
-						MessageCriticality param = (MessageCriticality)env.getMessage();
-						if(param.getCriticality() < this.criticality) {
-							this.parametersUsefulButShared.add(param.getParam());
-							this.parametersUseful.remove(param.getParam());
-						}
-					}
-
-					// Case of a notify is sent to notify that a parameter is useful to send
-					else {
-						MessageNotify notif = (MessageNotify)env.getMessage();
-						if(this.parametersFixes.contains(notif.getName())) {
-							this.parametersUseful.add(notif.getName());
-						}
-						else {
-							this.agentsToThanks.put(notif.getName(), this.parametersObtainFromNeighbours.get(notif.getName()));
-							this.parametersUsefulFromOther.add(notif.getName());
-						}
-					}
-				}
-			}
+			readAllMessage();
 			for(String s : this.parametersVariables) {
 				if(!this.agentsToThanks.keySet().contains(s)) {
 					this.support.firePropertyChange("SM NOT RECEIVE", s, 0);
@@ -311,7 +262,6 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			this.parametersCommunicated = new TreeSet<String>();
 
 
-			criticality = this.parametersUseful.size();
 
 
 
@@ -321,6 +271,77 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 		}
 	}
+
+	/**
+	 * Read all the message received
+	 */
+	private void readAllMessage() {
+		for(IAmakEnvelope env : this.getAllMessages()) {
+
+			// Case of a parameters is sent
+			if(env.getMessage() instanceof MessageParameter) {
+				MessageParameter param = (MessageParameter)env.getMessage();
+				// Getting the data if it is useful
+				if(this.parametersVariables.contains(param.getName())) {
+					if(!this.agentsToThanks.keySet().contains(param.getName())) {
+						this.parameters.put(param.getName(), param.getValue());
+						this.support.firePropertyChange("SM RECEIVE", param.getName(), param.getValue());
+						this.nb_receive++;
+					}
+					this.agentsToThanks.put(param.getName(), env.getMessageSenderAID());
+				}
+
+				// If someone else share the same parameters
+				if(this.parametersFixes.contains(param.getName())) {
+					if(this.parametersUseful.contains(param.getName())) {
+						this.agentsToDiscuss.put(param.getName(), env.getMessageSenderAID());
+					}
+				}
+				else {
+					if(this.parametersObtainFromNeighboursToSend.keySet().contains(param.getName())) {
+						if(this.parametersObtainFromNeighboursToSend.get(param.getName()).getNbJump() >= param.getNbJump()) {
+							this.parametersObtainFromNeighboursToSend.put(param.getName(),param);
+							this.parametersObtainFromNeighbours.put(param.getName(), env.getMessageSenderAID());
+						}
+					}
+					else {
+						this.parametersObtainFromNeighboursToSend.put(param.getName(),param);
+						this.parametersObtainFromNeighbours.put(param.getName(), env.getMessageSenderAID());
+					}
+				}
+			}
+			else {
+				// Case of a message about criticality
+				if(env.getMessage() instanceof MessageCriticality) {
+					MessageCriticality param = (MessageCriticality)env.getMessage();
+					if(param.getCriticality() < this.criticality) {
+						this.parametersUsefulButShared.add(param.getParam());
+						this.parametersUseful.remove(param.getParam());
+					}
+				}
+				else {
+					if(env.getMessage() instanceof MessageNeighbour) {
+						MessageNeighbour neighb = (MessageNeighbour)env.getMessage();
+						this.neighborsAID.put(neighb.getName(), env.getMessageSenderAID());
+					}
+					// Case of a notify is sent to notify that a parameter is useful to send
+					else {
+						MessageNotify notif = (MessageNotify)env.getMessage();
+						if(this.parametersFixes.contains(notif.getName())) {
+							this.parametersUseful.add(notif.getName());
+						}
+						else {
+							this.agentsToThanks.put(notif.getName(), this.parametersObtainFromNeighbours.get(notif.getName()));
+							this.parametersUsefulFromOther.add(notif.getName());
+						}
+					}
+				}
+
+				
+			}
+		}
+	}
+
 
 	@Override
 	protected void onDecide() {
@@ -387,6 +408,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 					this.parametersObtainFromNeighboursToSend.remove(mess.getName());
 				}
 			}
+
+			criticality = this.parametersUseful.size();
 			break;
 		default:
 			break;
@@ -450,17 +473,21 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 				tmp.removeAll(this.old_neighbours);
 				for(AGFunction agf : tmp) {
 					this.support.firePropertyChange("N ADD", "a", agf.getName());
-					if(this.name.equals("function0")) {
-						System.out.println("ICI");
-					}
 				}
 				this.old_neighbours.removeAll(this.neighbours);
 				for(AGFunction agf : this.old_neighbours) {
 					this.support.firePropertyChange("N REMOVE", null, agf.getName());
 				}
 			}
+			for(AGFunction agf :getAmas().getNeighborhood(this.idZone)) {
+				MessageNeighbour mess =new MessageNeighbour(this.getName());
+				this.sendMessage(mess, agf.getAID());
+			}
 			// Receiver
 			this.support.firePropertyChange("REC SENT", this.old_parametersCommunicated, this.parametersCommunicated);
+			
+			this.getAmas().setCriticityLinks(this.name, this.criticality);
+			this.support.firePropertyChange("CRITICALITY", this.old_criticality, this.criticality);
 
 			break;
 		default:
