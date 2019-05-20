@@ -8,9 +8,12 @@ public class MessageParameter implements IAmakMessage{
 	
 	private double value;
 	
+	private int nbJump;
+	
 	public MessageParameter(String name, double value) {
 		this.name = name;
 		this.value = value;
+		this.nbJump=0;
 	}
 
 	public String getName() {
@@ -51,5 +54,11 @@ public class MessageParameter implements IAmakMessage{
 		return true;
 	}
 	
+	public int getNbJump() {
+		return this.nbJump;
+	}
 	
+	public void increaseJump() {
+		this.nbJump++;
+	}
 }

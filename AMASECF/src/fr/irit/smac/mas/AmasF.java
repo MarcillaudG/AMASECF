@@ -20,8 +20,19 @@ import fr.irit.smac.functions.OracleFunction;
 import fr.irit.smac.lxplot.LxPlot;
 import fr.irit.smac.lxplot.commons.ChartType;
 import fr.irit.smac.messages.MessageParameter;
+import fr.irit.smac.modelui.AGFDataModel;
+import fr.irit.smac.modelui.AGFDataModel.Receiver;
+import fr.irit.smac.modelui.AGFDataModel.Sender;
 import fr.irit.smac.modelui.AGFModel;
-import fr.irit.smac.visu.LinksFileReader;
+import fr.irit.smac.modelui.NeighbourModel;
+import fr.irit.smac.modelui.ReceiverModel;
+import fr.irit.smac.modelui.SenderModel;
+import javafx.beans.property.ListProperty;
+import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import links2.driver.connection.LinksConnection;
 import links2.driver.connection.LocalLinksConnection;
 import links2.driver.marshaler.Link2DriverMarshaler;
@@ -37,6 +48,7 @@ public class AmasF extends Amas<EnvironmentF>{
 	private static final int NB_PARAMETER_MAX = 17;
 
 	private static final int NB_PARAMETER_MIN = 5;
+	
 
 	private Map<String,OracleFunction> oracle;
 
@@ -46,7 +58,6 @@ public class AmasF extends Amas<EnvironmentF>{
 
 	private Map<String,Double> network;
 
-	private Map<String,Double> parameterTypeNeeded;
 
 	private Map<String,AGFunction> allAGFunctions;
 
@@ -58,9 +69,6 @@ public class AmasF extends Amas<EnvironmentF>{
 
 	private Set<String> typesOfParametersNeeded;
 
-	private File fileLinks;
-
-	private FileWriter writer;
 
 	private Snapshot snapshot;
 
@@ -69,6 +77,12 @@ public class AmasF extends Amas<EnvironmentF>{
 	private List<Relation> relationsToLinks;
 	
 	private PropertyChangeSupport support;
+	
+
+	private PropertyChangeSupport supportAGFD;
+	
+	
+	private List<AGFDataModel> agfDataModels;
 
 
 	/**
@@ -82,13 +96,7 @@ public class AmasF extends Amas<EnvironmentF>{
 
 
 		//Create a new experiment
-		experiment = new Experiment("My experimentName");
-		this.fileLinks = new File("linksexpe.txt");
-		try {
-			this.writer = new FileWriter(this.fileLinks);
-		} catch (IOException e) {
-			System.err.println("ERROR WRITER");
-		}
+		experiment = new Experiment("AMASCEF : Graphe non complet");
 		switch(environment.getExpe()) {
 		case LPD:
 			initLPD();
@@ -114,12 +122,6 @@ public class AmasF extends Amas<EnvironmentF>{
 	public AmasF(EnvironmentF environment, Object[] params) {
 		super(environment, Scheduling.DEFAULT, params);
 		experiment = new Experiment("My experimentName");
-		this.fileLinks = new File("linksexpe.txt");
-		try {
-			this.writer = new FileWriter(this.fileLinks);
-		} catch (IOException e) {
-			System.err.println("ERROR WRITER");
-		}
 		switch(environment.getExpe()) {
 		case LPD:
 			initLPD();
@@ -215,19 +217,19 @@ public class AmasF extends Amas<EnvironmentF>{
 	private void initRandom() throws IOException {
 		//Init Listener
 		this.support = new PropertyChangeSupport(this);
+		this.supportAGFD = new PropertyChangeSupport(this);
 		
 		
 		// init of collections
 		this.oracle = new TreeMap<String,OracleFunction>();
 		this.allAGFunctions = new TreeMap<String,AGFunction>();
-		this.parameterTypeNeeded = new TreeMap<String,Double>();
 		this.parametersUsefulLastCycle = new TreeSet<String>();
+		this.agfDataModels = new ArrayList<AGFDataModel>();
 
 
 		List<String> variablestmp = new ArrayList<String>(this.environment.getVariables());
 
 		System.out.println("SIZE : "+ variablestmp.size());
-		this.writer.write("Entities : \n");
 
 		// Creation of the firsts agents
 		for(int i = 0; i < EnvironmentF.NB_AGENTS_MAX; i++) {
@@ -235,26 +237,21 @@ public class AmasF extends Amas<EnvironmentF>{
 			//Creation of the oracle function and the corresponding agent
 			AGFunction agf = new AGFunction(this, params, name);
 
-			this.writer.write("AGFunction," + name + "\n");
 
 			OracleFunction of = new OracleFunction(name);
 
 			// Initialization of parameters of function
 
 			//Parameters fixes
-			this.writer.write("Fixes : {\n");
 			for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j++) {
 				String variable = variablestmp.remove(r.nextInt(variablestmp.size()));
 				of.addParametersFixe(variable);
 				agf.addParameterFixe(variable);
 
-				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
 
 			}
-			this.writer.write("}\n");
 
 			// Write the variable for Links
-			this.writer.write("Variables : {\n");
 			//Parameters variables
 			List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
 			variablesRemaining.removeAll(of.getParametersFixes());
@@ -262,18 +259,19 @@ public class AmasF extends Amas<EnvironmentF>{
 				String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
 				of.addParametersVariable(variable);
 				agf.addParameterVariable(variable);
-				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
 			}
-			this.writer.write("}\n");
 
 			this.oracle.put(name,of);
 			this.allAGFunctions.put(name,agf);
 		}
 
 		// Creation of the seconds agents
-		//initSecond();
-
-		this.writer.write("EXPE\n");
+		initSecond();
+		
+		// Set the zone for the functions
+		for(AGFunction agf : this.allAGFunctions.values()) {
+			agf.SetIdZone(r.nextInt(this.environment.getNbZoneMax()));
+		}
 	}
 
 	/**
@@ -296,12 +294,10 @@ public class AmasF extends Amas<EnvironmentF>{
 			AGFunction agf = new AGFunction(this, params, name);
 			OracleFunction of = new OracleFunction(name);
 
-			this.writer.write("AGFunction," + name + "\n");
 
 
 			// Initialization of parameters of function
 
-			this.writer.write("Fixes : {\n");
 
 			// Parameters fixes
 			for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j=j+2) {
@@ -311,21 +307,17 @@ public class AmasF extends Amas<EnvironmentF>{
 				environmentVariable.remove(variable);
 				of.addParametersFixe(variable);
 				agf.addParameterFixe(variable);
-				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
 
 				// Other variables
 				String variable2 = environmentVariable.remove(r.nextInt(environmentVariable.size()));
 				of.addParametersFixe(variable2);
 				agf.addParameterFixe(variable2);
 
-				this.writer.write(this.environment.getTypeFromVariable(variable2) + ","+ variable2 + ","+ this.environment.getValueOfVariable(variable2) + "\n");
 
 			}
 
-			this.writer.write("}\n");
 
 			// Write the variable for Links
-			this.writer.write("Variables : {\n");
 			//Parameters variables
 			List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
 			variablesRemaining.removeAll(of.getParametersFixes());
@@ -333,10 +325,8 @@ public class AmasF extends Amas<EnvironmentF>{
 				String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
 				of.addParametersVariable(variable);
 				agf.addParameterVariable(variable);
-				this.writer.write(this.environment.getTypeFromVariable(variable) + ","+ variable + ","+ this.environment.getValueOfVariable(variable) + "\n");
 			}
 
-			this.writer.write("}\n");
 
 			//Add to the collections
 			this.oracle.put(name,of);
@@ -372,18 +362,13 @@ public class AmasF extends Amas<EnvironmentF>{
 			this.relationsToLinks = new ArrayList<Relation>();
 			//Create a new snapshot
 			snapshot = new Snapshot();
-			snapshot.setSnapshotNumber((long) this.getCycle());
+			snapshot.setSnapshotNumber(this.getCycle());
 			for(AGFunction agf : this.allAGFunctions.values()) {
 				Entity ent = new Entity(agf.getName(),"AGFunction");
 				Map<String,Object> map = new TreeMap<String,Object>();
 				map.put("Name", agf.getName());
 				ent.setAttributeMap(map);
 				this.snapshot.addEntity(ent);
-			}
-			try {
-				this.writer.write("Cycle : "+this.getCycle()+"\n");
-			} catch (IOException e) {
-				System.err.println("ERROR CYCLE\n");
 			}
 			for(OracleFunction of : this.oracle.values()) {
 				for(String s : of.getAllParameters()) {
@@ -421,21 +406,17 @@ public class AmasF extends Amas<EnvironmentF>{
 
 				for(Relation r : this.relationsToLinks) {
 					this.snapshot.addRelation(r);
-					try {
-						this.writer.write("ADD REL,"+ r.getNodeAid()+","+ r.getNodeBid()+",Receive,"+ r.getNodeAid() +",Reception \n");
-					} catch (IOException e) {
-						System.err.println("ERROR ADD REL");
-					}
 				}
 				// Add the snapshot into the experiment
 				experiment.addSnapshot(this.snapshot);
-				try {
-					this.writer.write("END Cycle\n");
-				} catch (IOException e) {
-					System.err.println("ERROR END CYCLE");
-				}
 				// Notify to all listener
 				this.support.firePropertyChange("End cycle", this.cycle-1, this.cycle);
+				for(AGFunction agf : this.allAGFunctions.values()) {
+					for(String s : agf.getFixes()) {
+						this.supportAGFD.firePropertyChange("SM ADD", s, agf.getName());
+					}
+				}
+				
 				break;
 			default:
 				break;
@@ -443,6 +424,8 @@ public class AmasF extends Amas<EnvironmentF>{
 			}
 		}
 		if(this.getCycle() == 100) {
+			
+			this.getScheduler().stop();
 
 			//Helper to get connection with default parameters
 			LinksConnection connection = LocalLinksConnection.getLocalConnexion();
@@ -453,13 +436,6 @@ public class AmasF extends Amas<EnvironmentF>{
 			//Don't forget to close the DB connection
 			connection.close();
 
-			try {
-				this.writer.close();
-				this.getScheduler().stop();
-				new LinksFileReader("linksexpe.txt");
-			} catch (IOException e) {
-				System.err.println("ERROR Close");
-			}
 		}
 	}
 
@@ -536,11 +512,6 @@ public class AmasF extends Amas<EnvironmentF>{
 	public Double getValueOfParameters(String s, AGFunction agf) {
 		double value = this.environment.getValueOfVariable(s);
 		// TODO add attribute
-		try {
-			this.writer.write("ADD Fixe,"+agf.getName()+","+s+","+value+"\n");
-		} catch (IOException e) {
-			System.err.println("ERROR ADD ATTRIBUTE");
-		}
 		return value;
 
 	}
@@ -563,20 +534,21 @@ public class AmasF extends Amas<EnvironmentF>{
 	 * @return String the type
 	 */
 	public String getTypeOfVariable(String variable) {
-		return this.environment.getTypeFromVariable(variable);
+		try {
+			return this.environment.getTypeFromVariable(variable);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
 	}
+
 
 	public void communicateValueOfVariable(String s, Double double1, AGFunction agf) {
 		this.network.put(s, double1);
 		Entity var = new Entity(s,"Variable");
 		this.snapshot.addEntity(var);
 		this.snapshot.addRelation(new Relation(agf.getName() + " send the variable "+s, agf.getName(), s, true, "Send variable"));
-		try {
-			this.writer.write("ADD VAR,"+s+"\n");
-			this.writer.write(agf.getName()+","+ s+  ",isCommunicated,"+ "Communication\n");
-		} catch (IOException e) {
-			System.err.println("ERROR ADD VAR");
-		}
 	}
 
 	/**
@@ -591,11 +563,6 @@ public class AmasF extends Amas<EnvironmentF>{
 			res = network.get(s);
 			this.parametersUseful.add(s);
 			this.snapshot.addRelation(new Relation(agf.getName() + " receive the variable "+s, s, agf.getName(), true, "Receive variable"));
-			try {
-				this.writer.write("ADD REL,"+ s+","+ agf.getName()+",Receive,"+s +",Reception \n");
-			} catch (IOException e) {
-				System.err.println("ERROR ADD REL");
-			}
 		}
 		return res;
 	}
@@ -620,9 +587,13 @@ public class AmasF extends Amas<EnvironmentF>{
 	 * @param agFunction
 	 * @return
 	 */
-	public List<AGFunction> getNeighborhood(AGFunction agFunction) {
-		List<AGFunction> neighbours = new ArrayList<AGFunction>(this.allAGFunctions.values());
-		neighbours.remove(agFunction);
+	public List<AGFunction> getNeighborhood(int id) {
+		List<AGFunction> neighbours = new ArrayList<AGFunction>();
+		for(AGFunction agf : this.allAGFunctions.values()) {
+			if(Math.abs(agf.getIdZone() - id) <=1 ) {
+				neighbours.add(agf);
+			}
+		}
 		return neighbours;
 	}
 
@@ -637,12 +608,6 @@ public class AmasF extends Amas<EnvironmentF>{
 			Entity var = new Entity(s,"Variable");
 			this.snapshot.addEntity(var);
 			this.snapshot.addRelation(new Relation(agf.getName() + " send the variable "+s, agf.getName(), s, true, "Send variable"));
-			try {
-				this.writer.write("ADD VAR,"+s+"\n");
-				this.writer.write(name+","+ s+  ",isCommunicated,"+ "Communication\n");
-			} catch (IOException e) {
-				System.err.println("ERROR ADD VAR");
-			}
 		}
 	}
 
@@ -680,7 +645,121 @@ public class AmasF extends Amas<EnvironmentF>{
     	this.allAGFunctions.get(name).removePropertyChangeListener(pcl);
     }
 
+    /**
+     * Create a data model
+     * @param name
+     * @return
+     */
+	public AGFDataModel createAGFDataModel(String name) {
+		AGFDataModel res = new AGFDataModel(name);
+		AGFunction agf = this.allAGFunctions.get(name);
+		
+		//Set the neighbours
+		ObservableList<StringProperty> observableList = FXCollections.observableArrayList();
+		ListProperty<StringProperty> neighbours = new SimpleListProperty<StringProperty>(observableList);
+		for(AGFunction agf2 : this.askNeighbourgs(agf)) {
+			neighbours.add(new SimpleStringProperty(agf2.getName()));
+		}
+		res.setNeighbours(neighbours);
+		
+		this.agfDataModels.add(res);
+		this.supportAGFD.addPropertyChangeListener(res);
+		return res;
+	}
 
+
+	/**
+	 * 
+	 */
+	private void updateAGFDataModels() {
+		for(AGFDataModel agfd : this.agfDataModels) {
+
+			AGFunction agf = this.allAGFunctions.get(agfd.getName());
+			
+			// old values
+			ListProperty<StringProperty> old_neighbours = new SimpleListProperty<StringProperty>(agfd.getNeighbours());
+			ListProperty<Receiver> old_receivers = new SimpleListProperty<Receiver>(agfd.getReceivers());
+			ListProperty<Sender> old_senders = new SimpleListProperty<Sender>(agfd.getSender());
+	
+			
+			// New values
+			ObservableList<StringProperty> observableList1 = FXCollections.observableArrayList();
+			ObservableList<Receiver> observableList2 = FXCollections.observableArrayList();
+			ObservableList<Sender> observableList3 = FXCollections.observableArrayList();
+			//Set the neighbours
+			ListProperty<StringProperty> neighbours = new SimpleListProperty<StringProperty>(observableList1);
+			ListProperty<Receiver> receivers = new SimpleListProperty<Receiver>(observableList2);
+			ListProperty<Sender> senders = new SimpleListProperty<Sender>(observableList3);
+			
+			
+			for(AGFunction agf2 : this.askNeighbourgs(agf)) {
+				neighbours.add(new SimpleStringProperty(agf2.getName()));
+				
+				// Set the receivers
+				for(String param : agf.getParametersToCommunicate()) {
+					if(agf2.getParametersVariables().contains(param)) {
+						receivers.add(agfd.createReceiver(new SimpleStringProperty(param),new SimpleStringProperty(agf2.getName())));
+					}
+				}
+				
+				// set the senders
+				for(String param : agf.getParametersVariables()) {
+					Sender send = agfd.createSender(new SimpleStringProperty(param),false);
+					if(agf2.getParametersToCommunicate().contains(param)) {
+						send.setReceive(true);
+					}
+					List<StringProperty> whos = new ArrayList<StringProperty>();
+					if(agf2.getFixes().contains(param)) {
+						whos.add(new SimpleStringProperty(agf2.getName()));
+					}
+					if(whos.isEmpty()) {
+						whos.add(new SimpleStringProperty("No one"));
+					}
+					send.setWho(whos);
+					senders.add(send);
+				}
+				
+			}
+			agfd.setAll(neighbours, receivers, senders);
+		}
+		this.supportAGFD.firePropertyChange("Update", this.getCycle()-1, this.getCycle());
+	}
+
+	/**
+	 * For the UI
+	 * @param name
+	 * 
+	 * @return a neighbour model
+	 */
+	public NeighbourModel createNeighbourModel(String name) {
+		NeighbourModel res = new NeighbourModel();
+		this.allAGFunctions.get(name).addPropertyChangeListener(res);
+		return res;
+	}
+
+	/**
+	 * For the UI
+	 * 
+	 * @param name
+	 * 
+	 * @return all the sender model for one agfunction
+	 */
+	public List<SenderModel> createSenderModel(String name) {
+		List<SenderModel> res = new ArrayList<SenderModel>();
+		for(String param : this.allAGFunctions.get(name).getParametersVariables()) {
+			SenderModel sen = new SenderModel(param,false);
+			this.allAGFunctions.get(name).addPropertyChangeListener(sen);
+			this.supportAGFD.addPropertyChangeListener(sen);
+			res.add(sen);
+		}
+		return res;
+	}
+
+	public ReceiverModel createReceiverModel(String name) {
+		ReceiverModel res = new ReceiverModel();
+		this.allAGFunctions.get(name).addPropertyChangeListener(res);
+		return res;
+	}
 
 
 }

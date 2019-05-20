@@ -19,7 +19,8 @@ public class EnvironmentF extends Environment{
 	private static int NB_VARIABLE_MAX = 1000;
 
 	public static int NB_AGENTS_MAX = 10;
-
+	
+	private int nbZoneMax = 3;
 	
 	// Static variables for LPD
 	private static final double MIN_SPEED = 30.0/3.6;
@@ -81,12 +82,13 @@ public class EnvironmentF extends Environment{
 	public EnvironmentF(Object[] params, Expe expe) {
 		super(Scheduling.DEFAULT, params);
 		
-		if(params.length >=5) {
+		if(params.length >=6) {
 			EnvironmentF.NB_AGENTS_MAX = Integer.parseInt((String) params[0]);
 			EnvironmentF.NB_VARIABLES_FIXES = Integer.parseInt((String) params[1]);
 			EnvironmentF.NB_VARIABLES_VARIABLES = Integer.parseInt((String) params[2]);
 			EnvironmentF.NB_TYPES_VARIABLES = Integer.parseInt((String) params[3]);
 			EnvironmentF.cross = Boolean.getBoolean((String) params[4]);
+			this.nbZoneMax = Integer.parseInt((String)params[5]);
 			if(!cross) {
 				EnvironmentF.NB_VARIABLE_MAX = EnvironmentF.NB_AGENTS_MAX * EnvironmentF.NB_VARIABLES_FIXES;
 			}
@@ -251,7 +253,7 @@ public class EnvironmentF extends Environment{
 		return this.expe;
 	}
 	
-	public String getTypeFromVariable(String variable) {
+	public String getTypeFromVariable(String variable) throws Exception {
 		String res = "";
 		boolean found = false;
 		List<String> tmp = new ArrayList<String>(this.all_variables.keySet());
@@ -263,13 +265,21 @@ public class EnvironmentF extends Environment{
 			}
 			i++;
 			// TODO change in throw exception
-			if(i > NB_TYPES_VARIABLES+2)
-				System.out.println("ERROR : BOUCLE INFINI");
+			if(i > NB_TYPES_VARIABLES+2) {
+				throw new Exception("Boucle infinie");
+			}
 		}
 		
 		return res;
 	}
 
-
+	public void setNbZone(int nbZone) {
+		this.nbZoneMax = nbZone;
+	}
+	
+	public int getNbZoneMax() {
+		return this.nbZoneMax;
+	}
+	
 
 }

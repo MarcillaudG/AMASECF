@@ -3,6 +3,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,8 @@ import fr.irit.smac.messages.MessageCriticality;
 import fr.irit.smac.messages.MessageNotify;
 import fr.irit.smac.messages.MessageParameter;
 import fr.irit.smac.messages.SimpleEnvelope;
+import fr.irit.smac.modelui.NeighbourModel;
+import fr.irit.smac.modelui.SenderModel;
 
 public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
@@ -34,6 +37,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private String name;
 
 	private List<AGFunction> neighbours;
+	private List<AGFunction> old_neighbours;
 
 	private String length;
 
@@ -43,29 +47,81 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 	private int criticality = 0;
 
-	
+	private int idZone;
+
+
 	// Variable to send to the ui
 	private int nb_sended = 0;
 	private int old_nb_sended = 0;
 	private int nb_receive = 0;
 	private int old_nb_receive = 0;
-	
+
 	private List<String> flow;
 
 
+	/**
+	 * All the parameters that the function can obtain by itself
+	 */
 	private List<String> parametersFixes;
 
+	/**
+	 * All the parameters that the function can't obtain by itself
+	 */
 	private Set<String> parametersVariables;
 
+	/**
+	 * All the parameters the function know they are useful to communicate
+	 *  It will communicate those in priority
+	 */
 	private Set<String> parametersUseful;
+	/**
+	 * All the parameters the function knows that they are not useful to communicate
+	 */
 	private Set<String> parametersNotUseful;
+
+	/**
+	 * Collection used to know which parameter were communicated
+	 */
 	private Set<String> parametersCommunicated;
+
+	/**
+	 * Collection use for the UI and the listener
+	 */
+	private Set<String> old_parametersCommunicated;
+
+	/**
+	 * All the parameters which are useful but another function can communicate it too
+	 */
 	private Set<String> parametersUsefulButShared;
 
+	/**
+	 * All the parameters that 
+	 */
+	private Set<String> parametersShared;
+
+	/**
+	 * The set with all the parameters that the function decide to communicate
+	 */
 	private Set<MessageParameter> parametersToCommunicate;
 
+	/**
+	 * Map use to send the messages to notify the usefulness of a parameter
+	 */
 	private Map<String,AID> agentsToThanks;
+
+	/**
+	 * Map use to the cooperation between function
+	 */
 	private Map<String,AID> agentsToDiscuss;
+
+	/**
+	 * Map use to store the parameters that can be obtain but not useful
+	 */
+	private Map<String,MessageParameter> parametersObtainFromNeighboursToSend; 
+
+	private Map<String,AID>  parametersObtainFromNeighbours;
+
+	private Set<String> parametersUsefulFromOther;
 
 	private LPDFunction myFunctionLPD;
 	private SumFunction myFunctionSum;
@@ -73,30 +129,52 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private PropertyChangeSupport support;
 
 	private double feedback;
+
+	private boolean nmodel;
+	private boolean smodel;
+
 	public AGFunction(AmasF amas, Object[] params, String name) {
 		super(amas, params);
 
 		this.name = name;
 		parameters = new TreeMap<String,Double>();
+
+		this.idZone = 0;
+		this.nmodel = false;
+		this.smodel = false;
+
+		// Collections for UI
 		this.neighbours = new ArrayList<AGFunction>();
+		this.old_neighbours = new ArrayList<AGFunction>();
+
+		// Collections for the agent
 		this.parametersFixes = new ArrayList<String>();
 		this.parametersVariables = new TreeSet<String>();
+
+		//Collections for the learning
 		this.parametersUseful = new TreeSet<String>();
 		this.parametersNotUseful = new TreeSet<String>();
 		this.parametersCommunicated = new TreeSet<String>();
+		this.parametersObtainFromNeighboursToSend = new TreeMap<String,MessageParameter>();
+		this.parametersObtainFromNeighbours = new TreeMap<String,AID>();
+		this.parametersUsefulFromOther = new TreeSet<String>();
+
+		//Collection for the UI
+		this.old_parametersCommunicated = new TreeSet<String>();
+
+		//Collection for the cooperation
 		this.parametersUsefulButShared = new TreeSet<String>();
+		this.parametersShared = new TreeSet<String>();
+
+
+
 		this.support = new PropertyChangeSupport(this);
 
 
 		this.flow = new ArrayList<String>();
 		feedback = 0.0;
-		initHistory();
 	}
 
-	private void initHistory() {
-		//this.history = new ArrayList<Map<String,Double>>();
-		//this.resultHistory = new ArrayList<Double>();
-	}
 
 	@Override
 	protected void onInitialization() {
@@ -113,12 +191,15 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 	@Override
 	protected void onPerceive() {
-		
+
 		this.old_nb_receive = this.nb_receive;
 		this.nb_receive = 0;
 		this.old_nb_sended = this.nb_sended;
 		this.nb_sended = 0;
-		
+
+		this.old_neighbours = this.neighbours;
+		this.neighbours = new ArrayList<AGFunction>();
+
 		switch(getAmas().getEnvironment().getExpe()) {
 		case LPD:
 			// Recuperation du voisinage
@@ -132,13 +213,6 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			this.myFunctionLPD.setC(this.getAmas().getCapacity(this.capacity));
 			//}
 
-
-			// Recuperation de tous les parametres percus
-			/*for(String s : this.flow) {
-				if(this.dataPerceived.contains(s)) {
-					this.myFunctionLPD.addFlow(this.getAmas().getFlow(s));
-				}
-			}*/
 			break;
 		case RANDOM:
 
@@ -157,6 +231,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			}
 			int i = 0;
 			// Reading of all messages
+			int nbTest = 0;
 			for(IAmakEnvelope env : this.getAllMessages()) {
 
 				// Case of a parameters is sent
@@ -164,13 +239,31 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 					MessageParameter param = (MessageParameter)env.getMessage();
 					// Getting the data if it is useful
 					if(this.parametersVariables.contains(param.getName())) {
-						this.parameters.put(param.getName(), param.getValue());
+						if(!this.agentsToThanks.keySet().contains(param.getName())) {
+							this.parameters.put(param.getName(), param.getValue());
+							this.support.firePropertyChange("SM RECEIVE", param.getName(), param.getValue());
+							this.nb_receive++;
+						}
 						this.agentsToThanks.put(param.getName(), env.getMessageSenderAID());
-						this.nb_receive++;
 					}
+
 					// If someone else share the same parameters
 					if(this.parametersFixes.contains(param.getName())) {
-						this.agentsToDiscuss.put(param.getName(), env.getMessageSenderAID());
+						if(this.parametersUseful.contains(param.getName())) {
+							this.agentsToDiscuss.put(param.getName(), env.getMessageSenderAID());
+						}
+					}
+					else {
+						if(this.parametersObtainFromNeighboursToSend.keySet().contains(param.getName())) {
+							if(this.parametersObtainFromNeighboursToSend.get(param.getName()).getNbJump() >= param.getNbJump()) {
+								this.parametersObtainFromNeighboursToSend.put(param.getName(),param);
+								this.parametersObtainFromNeighbours.put(param.getName(), env.getMessageSenderAID());
+							}
+						}
+						else {
+							this.parametersObtainFromNeighboursToSend.put(param.getName(),param);
+							this.parametersObtainFromNeighbours.put(param.getName(), env.getMessageSenderAID());
+						}
 					}
 				}
 				else {
@@ -186,8 +279,19 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 					// Case of a notify is sent to notify that a parameter is useful to send
 					else {
 						MessageNotify notif = (MessageNotify)env.getMessage();
-						this.parametersUseful.add(notif.getName());
+						if(this.parametersFixes.contains(notif.getName())) {
+							this.parametersUseful.add(notif.getName());
+						}
+						else {
+							this.agentsToThanks.put(notif.getName(), this.parametersObtainFromNeighbours.get(notif.getName()));
+							this.parametersUsefulFromOther.add(notif.getName());
+						}
 					}
+				}
+			}
+			for(String s : this.parametersVariables) {
+				if(!this.agentsToThanks.keySet().contains(s)) {
+					this.support.firePropertyChange("SM NOT RECEIVE", s, 0);
 				}
 			}
 
@@ -199,7 +303,10 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			//this.parametersUseful.addAll(getAmas().isParametersUseful(this.parametersFixes));
 
 			// Remove the parameters communicated but useless
+			this.old_parametersCommunicated.clear();
+			this.old_parametersCommunicated.addAll(parametersCommunicated);
 			this.parametersCommunicated.removeAll(this.parametersUseful);
+			this.parametersNotUseful.removeAll(this.parametersUseful);
 			this.parametersNotUseful.addAll(this.parametersCommunicated);
 			this.parametersCommunicated = new TreeSet<String>();
 
@@ -230,46 +337,56 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 					}
 				}
 			}
-			// Recuperation des donnes par communication
-			/*Set<String> dataMisses = new TreeSet<String>(this.dataCommunicated);
-			int i = 0;
-			while(dataMisses.size() > 0 && i < this.neighbours.size()) {
-				AGFunction agf = this.neighbours.get(i);
-				Map<String,Double> datas = agf.exchangeInformation(dataMisses);
-
-				for(String s : datas.keySet()) {
-					dataMisses.remove(s);
-					this.myFunctionLPD.addFlow(datas.get(s));
-				}
-
-			}*/
 			break;
 		case RANDOM:
 			// The agent decide which parameters to communicate
 			int nbCom = 0;
 			// Communication of the parameters useful
 			for(String variableUseful : this.parametersUseful) {
-				nbCom++;
-				MessageParameter param = new MessageParameter(variableUseful, this.parameters.get(variableUseful));
-				this.parametersToCommunicate.add(param);
-				// this.getAmas().communicateValueOfVariable(variableUseful, this.parameters.get(variableUseful),this);
-				this.parametersCommunicated.add(variableUseful);
+				if(nbCom < NB_COMMUNICATION_MAX) {
+					MessageParameter param = new MessageParameter(variableUseful, this.parameters.get(variableUseful));
+					this.parametersToCommunicate.add(param);
+					this.parametersCommunicated.add(variableUseful);
+					nbCom++;
+				}
 			}
 
 			// Communication of the parameters remaining
 			List<String> variablesRemaining = new ArrayList<String>(this.parametersFixes);
 			variablesRemaining.removeAll(this.parametersUseful);
 			variablesRemaining.removeAll(parametersNotUseful);
+			variablesRemaining.removeAll(this.parametersUsefulButShared);
 			for(int j = 0; j < variablesRemaining.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
 				String s = variablesRemaining.get(j);
 				MessageParameter param = new MessageParameter(s, this.parameters.get(s));
-				//this.getAmas().communicateValueOfVariable(s,this.parameters.get(s),this);
 				this.parametersToCommunicate.add(param);
 				nbCom++;
 				this.parametersCommunicated.add(s);
 			}
 
+			List<String> fromOthers = new ArrayList<String>(this.parametersUsefulFromOther);
+			for(int j = 0; j < fromOthers.size() && nbCom < NB_COMMUNICATION_MAX;j++) {
+				if(this.parametersObtainFromNeighboursToSend.containsKey(fromOthers.get(j))) {
+					String s = fromOthers.get(j);
+					MessageParameter param = this.parametersObtainFromNeighboursToSend.get(s);
+					param.increaseJump();
+					this.parametersToCommunicate.add(param);
+					nbCom++;
+					this.parametersCommunicated.add(s);
+				}
+			}
 
+			if(nbCom < NB_COMMUNICATION_MAX) {
+				List<MessageParameter> redistribute = new ArrayList<MessageParameter>(this.parametersObtainFromNeighboursToSend.values());
+				for(int j = 0; j < redistribute.size() && nbCom <NB_COMMUNICATION_MAX;j++) {
+					MessageParameter mess = redistribute.get(j);
+					mess.increaseJump();
+					this.parametersToCommunicate.add(mess);
+					nbCom++;
+					this.parametersCommunicated.add(mess.getName());
+					this.parametersObtainFromNeighboursToSend.remove(mess.getName());
+				}
+			}
 			break;
 		default:
 			break;
@@ -277,33 +394,7 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		}
 	}
 
-	/**
-	 * Ask a neighbour the informations
-	 */
-	private void searchForInformation() {
-		int i = 0;
-		boolean end = false;
-		for(AGFunction agf : this.neighbours) {
-			this.exchangeInformation(agf.parameters.keySet());
-		}
-		this.initHistory();
-	}
 
-	/**
-	 * Partage d'information a une autre fonction
-	 * @param parameters2
-	 * @return Map avec les couples parametres et valeurs
-	 * TODO Communication des donnees communiquees 
-	 */
-	private Map<String, Double> exchangeInformation(Set<String> parameters2) {
-		Map<String, Double> ret = new TreeMap<String,Double>();
-		for(String s : parameters2) {
-			/*if(this.dataPerceived.contains(s)) {
-				ret.put(s, this.getAmas().getFlow(s));
-			}*/
-		}
-		return ret;
-	}
 
 	@Override
 	protected void onAct() {
@@ -329,12 +420,13 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			this.getAmas().CommunicateMessageLinks(this.parametersToCommunicate,this.name,this);
 
 			// Send the message to share the value of a parameter for the next cycle
-			for(AGFunction agf : this.getAmas().getNeighborhood(this)) {
+			for(AGFunction agf : this.getAmas().getNeighborhood(this.idZone)) {
 				for(MessageParameter mess : this.parametersToCommunicate) {
 					this.sendMessage(mess, agf.getAID());
 				}
 			}
-			this.nb_sended = this.parametersUseful.size();
+			this.nb_sended = this.parametersToCommunicate.size();
+			
 
 			// Send the message to notify the usefulness of a parameter
 			for(String param : this.agentsToThanks.keySet()) {
@@ -346,10 +438,30 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 			for(String param : this.agentsToDiscuss.keySet()) {
 				this.sendMessage(new MessageCriticality(param,this.criticality),this.agentsToDiscuss.get(param));
 			}
-			
+
 			this.support.firePropertyChange("SENT", this.old_nb_sended, this.nb_sended);
-			
+
 			this.support.firePropertyChange("RECEIVE", this.old_nb_receive, this.nb_receive);
+
+			// Neighbours
+			if(this.nmodel) {
+				this.neighbours = getAmas().getNeighborhood(this.idZone);
+				List<AGFunction> tmp = new ArrayList<AGFunction>(this.neighbours);
+				tmp.removeAll(this.old_neighbours);
+				for(AGFunction agf : tmp) {
+					this.support.firePropertyChange("N ADD", "a", agf.getName());
+					if(this.name.equals("function0")) {
+						System.out.println("ICI");
+					}
+				}
+				this.old_neighbours.removeAll(this.neighbours);
+				for(AGFunction agf : this.old_neighbours) {
+					this.support.firePropertyChange("N REMOVE", null, agf.getName());
+				}
+			}
+			// Receiver
+			this.support.firePropertyChange("REC SENT", this.old_parametersCommunicated, this.parametersCommunicated);
+
 			break;
 		default:
 			break;
@@ -474,14 +586,51 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 		return this.parametersFixes;
 	}
 
-
+	/**
+	 * Add a listener
+	 * @param pcl
+	 */
 	public void addPropertyChangeListener(PropertyChangeListener pcl) {
+		if(pcl instanceof NeighbourModel) {
+			this.nmodel = true;
+		}
+		if(pcl instanceof SenderModel) {
+			this.smodel = true;
+		}
 		support.addPropertyChangeListener(pcl);
 	}
 
+	/**
+	 * Remove a listener
+	 * @param pcl
+	 */
 	public void removePropertyChangeListener(PropertyChangeListener pcl) {
 		support.removePropertyChangeListener(pcl);
 	}
 
+	/**
+	 * Return the set of all parameters communicated
+	 * 
+	 * @return a set with the name of all parameters communicated
+	 */
+	public Set<String> getParametersToCommunicate(){
+		Set<String> res = new TreeSet<String>();
+		for(MessageParameter mess : this.parametersToCommunicate) {
+			res.add(mess.getName());
+		}
+		return res;
+	}
 
+	/**
+	 * Setter for the idZone
+	 * 
+	 * @param id
+	 */
+	public void SetIdZone(int id) {
+		this.idZone = id;
+	}
+
+	public int getIdZone() {
+		return this.idZone;
+	}
 }
