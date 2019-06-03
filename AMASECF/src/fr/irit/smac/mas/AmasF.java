@@ -1,11 +1,9 @@
 package fr.irit.smac.mas;
 
-import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.List;
@@ -16,13 +14,12 @@ import java.util.Set;
 import fr.irit.smac.amak.Amas;
 import fr.irit.smac.amak.Configuration;
 import fr.irit.smac.amak.Scheduling;
+import fr.irit.smac.amak.aid.AID;
 import fr.irit.smac.functions.OracleFunction;
 import fr.irit.smac.lxplot.LxPlot;
 import fr.irit.smac.lxplot.commons.ChartType;
 import fr.irit.smac.messages.MessageParameter;
 import fr.irit.smac.modelui.AGFDataModel;
-import fr.irit.smac.modelui.AGFDataModel.Receiver;
-import fr.irit.smac.modelui.AGFDataModel.Sender;
 import fr.irit.smac.modelui.AGFModel;
 import fr.irit.smac.modelui.NeighbourModel;
 import fr.irit.smac.modelui.ReceiverModel;
@@ -121,7 +118,7 @@ public class AmasF extends Amas<EnvironmentF>{
 	 */
 	public AmasF(EnvironmentF environment, Object[] params) {
 		super(environment, Scheduling.DEFAULT, params);
-		experiment = new Experiment("My experimentName");
+		experiment = new Experiment("AMASCEF : Graphe non complet");
 		switch(environment.getExpe()) {
 		case LPD:
 			initLPD();
@@ -226,10 +223,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		this.parametersUsefulLastCycle = new TreeSet<String>();
 		this.agfDataModels = new ArrayList<AGFDataModel>();
 
-
 		List<String> variablestmp = new ArrayList<String>(this.environment.getVariables());
-
-		System.out.println("SIZE : "+ variablestmp.size());
 
 		// Creation of the firsts agents
 		for(int i = 0; i < EnvironmentF.NB_AGENTS_MAX; i++) {
@@ -606,7 +600,9 @@ public class AmasF extends Amas<EnvironmentF>{
 		for(MessageParameter mess : parametersToCommunicate) {
 			String s = mess.getName();
 			Entity var = new Entity(s,"Variable");
-			this.snapshot.addEntity(var);
+			if(!this.snapshot.hasEntityGivenID(mess.getName())) {
+				this.snapshot.addEntity(var);
+			}
 			this.snapshot.addRelation(new Relation(agf.getName() + " send the variable "+s, agf.getName(), s, true, "Send variable"));
 		}
 	}
@@ -621,11 +617,14 @@ public class AmasF extends Amas<EnvironmentF>{
 	public void notifyLinksVariableUseful(String param, String agName) {
 		Relation r = new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable");
 		this.relationsToLinks.add(r);
-		/*this.snapshot.addRelation(new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable"));*/
+		if(!this.snapshot.hasEntityGivenID(param)) {
+			this.snapshot.addEntity(new Entity(param,"Variable"));
+		}
+		this.snapshot.addRelation(new Relation(agName + " receive the variable "+param, param, agName, true, "Receive variable"));
 	}
 	
 	public void setCriticityLinks(String agfName,int crit) {
-		this.snapshot.getEntityGivenID(agfName).setAttribute("Criticity", crit);
+		this.snapshot.getEntityGivenID(agfName).setAttribute("Criticality", crit);
 	}
 	
 	
@@ -701,6 +700,11 @@ public class AmasF extends Amas<EnvironmentF>{
 		return res;
 	}
 
+	/**
+	 * 
+	 * @param name
+	 * @return
+	 */
 	public ReceiverModel createReceiverModel(String name) {
 		ReceiverModel res = new ReceiverModel();
 		this.allAGFunctions.get(name).addPropertyChangeListener(res);
@@ -711,5 +715,18 @@ public class AmasF extends Amas<EnvironmentF>{
 		return this.allAGFunctions.get(name);
 	}
 
+	public String getAGFNameWithAID(AID aid) {
+		String res = "";
+		Iterator<AGFunction> iter = this.allAGFunctions.values().iterator();
+		boolean found = false;
+		while(iter.hasNext() && !found) {
+			AGFunction agf = iter.next();
+			if(agf.getAID().equals(aid)) {
+				res = agf.getName();
+				found = true;
+			}
+		}
+		return res;
+	}
 
 }
