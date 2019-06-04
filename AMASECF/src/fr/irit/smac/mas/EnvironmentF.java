@@ -115,7 +115,7 @@ public class EnvironmentF extends Environment{
 		this.all_variables = new TreeMap<String,Set<String>>();
 		this.variables_limits = new TreeMap<String,Pair<Double,Double>>();
 		this.shieldVariables = new ArrayList<String>();
-		this.shieldUser = new ShieldUser(EnvironmentF.NB_VARIABLE_MAX);
+		this.shieldUser = new ShieldUser();
 
 		this.r = new Random();
 		switch(this.expe) {
@@ -163,9 +163,7 @@ public class EnvironmentF extends Environment{
 					this.variables.put(variable, value);
 				}
 			}
-			
-			this.shieldUser.initSetOfVariableWithRange(EnvironmentF.NB_VARIABLE_MAX, 0.0, 100.0);
-			
+			this.shieldUser.initSetOfVariableWithRange(EnvironmentF.NB_VARIABLE_MAX, 0, 100);
 			for(String var : this.shieldUser.getAllVariables()) {
 				this.shieldVariables.add(var);
 			}
@@ -270,6 +268,10 @@ public class EnvironmentF extends Environment{
 	
 	public Double getValueOfShieldVariable(String name) {
 		return this.shieldUser.getValueOfVariable(name);
+	}
+	
+	public Set<String> getShieldVariables(){
+		return this.shieldUser.getAllVariables();
 	}
 	
 	public Expe getExpe() {

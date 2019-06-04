@@ -208,7 +208,7 @@ public class AmasF extends Amas<EnvironmentF>{
 	}
 
 	/**
-	 * Initialisation when using the sum function
+	 * Initialization when using the sum function
 	 * @throws IOException 
 	 */
 	private void initRandom() throws IOException {
@@ -223,8 +223,8 @@ public class AmasF extends Amas<EnvironmentF>{
 		this.parametersUsefulLastCycle = new TreeSet<String>();
 		this.agfDataModels = new ArrayList<AGFDataModel>();
 
-		List<String> variablestmp = new ArrayList<String>(this.environment.getVariables());
-
+		//List<String> variablestmp = new ArrayList<String>(this.environment.getVariables());
+		List<String> variablesShieldTmp  = new ArrayList<String>(this.environment.getShieldVariables());
 		// Creation of the firsts agents
 		for(int i = 0; i < EnvironmentF.NB_AGENTS_MAX; i++) {
 			String name = "function"+i;
@@ -238,7 +238,7 @@ public class AmasF extends Amas<EnvironmentF>{
 
 			//Parameters fixes
 			for(int j = 0; j < EnvironmentF.NB_VARIABLES_FIXES; j++) {
-				String variable = variablestmp.remove(r.nextInt(variablestmp.size()));
+				String variable = variablesShieldTmp.remove(r.nextInt(variablesShieldTmp.size()));
 				of.addParametersFixe(variable);
 				agf.addParameterFixe(variable);
 
@@ -247,10 +247,11 @@ public class AmasF extends Amas<EnvironmentF>{
 
 			// Write the variable for Links
 			//Parameters variables
-			List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
-			variablesRemaining.removeAll(of.getParametersFixes());
+			//List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
+			List<String> variablesShieldRemaining = new ArrayList<String>(this.environment.getShieldVariables());
+			variablesShieldRemaining.removeAll(of.getParametersFixes());
 			for(int j = 0; j < EnvironmentF.NB_VARIABLES_VARIABLES; j++) {
-				String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
+				String variable = variablesShieldRemaining.remove(r.nextInt(variablesShieldRemaining.size()));
 				of.addParametersVariable(variable);
 				agf.addParameterVariable(variable);
 			}
@@ -280,8 +281,9 @@ public class AmasF extends Amas<EnvironmentF>{
 			List<String> variableOfOld = new ArrayList<String>(old.getParametersFixes());
 
 			// Variables of the environment without the ones from the old functions
-			List<String> environmentVariable = new ArrayList<String>(this.environment.getVariables());
-			environmentVariable.removeAll(variableOfOld);
+			//List<String> environmentVariable = new ArrayList<String>(this.environment.getVariables());
+			List<String> environmentShieldVariable = new ArrayList<String>(this.environment.getShieldVariables());
+			environmentShieldVariable.removeAll(variableOfOld);
 
 			//Construction of the functions
 			String name = old.getname()+"Other";
@@ -298,12 +300,12 @@ public class AmasF extends Amas<EnvironmentF>{
 
 				// Variable of the matching function
 				String variable = variableOfOld.remove(r.nextInt(variableOfOld.size()));
-				environmentVariable.remove(variable);
+				environmentShieldVariable.remove(variable);
 				of.addParametersFixe(variable);
 				agf.addParameterFixe(variable);
 
 				// Other variables
-				String variable2 = environmentVariable.remove(r.nextInt(environmentVariable.size()));
+				String variable2 = environmentShieldVariable.remove(r.nextInt(environmentShieldVariable.size()));
 				of.addParametersFixe(variable2);
 				agf.addParameterFixe(variable2);
 
@@ -313,10 +315,11 @@ public class AmasF extends Amas<EnvironmentF>{
 
 			// Write the variable for Links
 			//Parameters variables
-			List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
-			variablesRemaining.removeAll(of.getParametersFixes());
+			//List<String> variablesRemaining = new ArrayList<String>(this.environment.getVariables());
+			List<String> variablesShieldRemaining = new ArrayList<String>(this.environment.getShieldVariables());
+			variablesShieldRemaining.removeAll(of.getParametersFixes());
 			for(int j = 0; j < EnvironmentF.NB_VARIABLES_VARIABLES; j++) {
-				String variable = variablesRemaining.remove(r.nextInt(variablesRemaining.size()));
+				String variable = variablesShieldRemaining.remove(r.nextInt(variablesShieldRemaining.size()));
 				of.addParametersVariable(variable);
 				agf.addParameterVariable(variable);
 			}
@@ -366,7 +369,8 @@ public class AmasF extends Amas<EnvironmentF>{
 			}
 			for(OracleFunction of : this.oracle.values()) {
 				for(String s : of.getAllParameters()) {
-					of.setValueOfVariable(s, this.environment.getValueOfVariable(s));
+					//of.setValueOfVariable(s, this.environment.getValueOfVariable(s));
+					of.setValueOfVariable(s, this.environment.getValueOfShieldVariable(s));
 				}
 			}
 			break;
@@ -505,6 +509,14 @@ public class AmasF extends Amas<EnvironmentF>{
 
 	public Double getValueOfParameters(String s, AGFunction agf) {
 		double value = this.environment.getValueOfVariable(s);
+		// TODO add attribute
+		return value;
+
+	}
+	
+
+	public Double getValueOfShieldVariable(String s, AGFunction agf) {
+		double value = this.environment.getValueOfShieldVariable(s);
 		// TODO add attribute
 		return value;
 

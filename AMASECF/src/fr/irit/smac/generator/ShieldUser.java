@@ -22,6 +22,9 @@ public class ShieldUser {
 	
 	public void initSetOfVariableWithRange(int nbVar,double min, double max) {
 		this.generator.initSetOfVariableWithRange(nbVar, min, max);
+		System.out.println(this.generator.getAllVariables());
+		this.generator.generateAllValues();
+		System.out.println(this.generator.getAllVariables());
 	}
 	
 	/**

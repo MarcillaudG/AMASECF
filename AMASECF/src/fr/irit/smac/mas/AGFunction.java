@@ -249,7 +249,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 			// Perception of the fixed parameters
 			for(String s : this.parametersFixes) {
-				this.parameters.put(s, this.getAmas().getValueOfParameters(s,this));
+				//this.parameters.put(s, this.getAmas().getValueOfParameters(s,this));
+				this.parameters.put(s, this.getAmas().getValueOfShieldVariable(s,this));
 			}
 			readAllMessage();
 			for(String s : this.parametersVariables) {
