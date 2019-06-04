@@ -12,6 +12,8 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import fr.irit.smac.amak.Environment;
 import fr.irit.smac.amak.Scheduling;
+import fr.irit.smac.generator.ShieldUser;
+import fr.irit.smac.shield.model.Variable;
 
 public class EnvironmentF extends Environment{
 
@@ -69,7 +71,14 @@ public class EnvironmentF extends Environment{
 	private Map<String,Set<String>> all_variables;
 	
 	private Map<String,Pair<Double,Double>> variables_limits;
+	
+	/**
+	 * Shield variables
+	 */
+	private List<String> shieldVariables;
 
+	private ShieldUser shieldUser;
+	
 	private Random r;
 
 	private Expe expe;
@@ -105,6 +114,8 @@ public class EnvironmentF extends Environment{
 		this.variables = new TreeMap<String,Double>();
 		this.all_variables = new TreeMap<String,Set<String>>();
 		this.variables_limits = new TreeMap<String,Pair<Double,Double>>();
+		this.shieldVariables = new ArrayList<String>();
+		this.shieldUser = new ShieldUser(EnvironmentF.NB_VARIABLE_MAX);
 
 		this.r = new Random();
 		switch(this.expe) {
@@ -152,6 +163,13 @@ public class EnvironmentF extends Environment{
 					this.variables.put(variable, value);
 				}
 			}
+			
+			this.shieldUser.initSetOfVariableWithRange(EnvironmentF.NB_VARIABLE_MAX, 0.0, 100.0);
+			
+			for(String var : this.shieldUser.getAllVariables()) {
+				this.shieldVariables.add(var);
+			}
+			
 			break;
 		default:
 			break;
@@ -202,6 +220,7 @@ public class EnvironmentF extends Environment{
 					this.variables.put(variable, value);
 				}
 			}
+			this.shieldUser.nextCycle();
 			break;
 		default:
 			break;
@@ -247,6 +266,10 @@ public class EnvironmentF extends Environment{
 
 	public Double getValueOfVariable(String s) {
 		return this.variables.get(s);
+	}
+	
+	public Double getValueOfShieldVariable(String name) {
+		return this.shieldUser.getValueOfVariable(name);
 	}
 	
 	public Expe getExpe() {

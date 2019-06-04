@@ -1,4 +1,6 @@
-package generator;
+package fr.irit.smac.generator;
+
+import java.util.Set;
 
 import fr.irit.smac.shield.c2av.GeneratorOfFunction;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
@@ -65,5 +67,9 @@ public class ShieldUser {
 	
 	public void nextCycle() {
 		this.generator.generateAllValues();
+	}
+	
+	public Set<String> getAllVariables(){
+		return this.generator.getAllVariables();
 	}
 }
