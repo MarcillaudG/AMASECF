@@ -3,28 +3,32 @@ package fr.irit.smac.generator;
 import java.util.Set;
 
 import fr.irit.smac.shield.c2av.GeneratorOfFunction;
+import fr.irit.smac.shield.c2av.GeneratorOfTypedVariable;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
 import fr.irit.smac.shield.model.Generator;
 
 public class ShieldUser {
 
-	private Generator generator;
+	private GeneratorOfTypedVariable generator;
 	
 	private GeneratorOfFunction funGen;
 	
 	public ShieldUser() {
-		this.generator = new Generator();
+		this.generator = new GeneratorOfTypedVariable();
 	}
 	
-	public ShieldUser(int nbVarMax) {
-		this.generator = new Generator(nbVarMax);
-	}
 	
 	public void initSetOfVariableWithRange(int nbVar,double min, double max) {
 		this.generator.initSetOfVariableWithRange(nbVar, min, max);
-		System.out.println(this.generator.getAllVariables());
 		this.generator.generateAllValues();
-		System.out.println(this.generator.getAllVariables());
+	}
+	
+	public void initSetOfTypedVariableWithRange(int nbVar, double min, double max, String type) {
+		this.generator.initSetOfTypedVariable(nbVar, min, max, type);
+	}
+	
+	public void generateAllFunctionsOfVariable() {
+		this.generator.generateAllFunctions();
 	}
 	
 	/**

@@ -152,6 +152,7 @@ public class EnvironmentF extends Environment{
 				}
 				double min = r.nextInt(200);
 				double max = r.nextInt(200) + min+ 20;
+				this.shieldUser.initSetOfTypedVariableWithRange(NB_VARIABLE_MAX/NB_TYPES_VARIABLES, min, max, type);
 				this.variables_limits.put(type, Pair.of(min, max));
 			}
 			// First initialization of the values of the variables
@@ -163,11 +164,10 @@ public class EnvironmentF extends Environment{
 					this.variables.put(variable, value);
 				}
 			}
-			this.shieldUser.initSetOfVariableWithRange(EnvironmentF.NB_VARIABLE_MAX, 0, 100);
 			for(String var : this.shieldUser.getAllVariables()) {
 				this.shieldVariables.add(var);
 			}
-			
+			this.shieldUser.generateAllFunctionsOfVariable();
 			break;
 		default:
 			break;
