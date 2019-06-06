@@ -16,6 +16,7 @@ import fr.irit.smac.amak.Configuration;
 import fr.irit.smac.amak.Scheduling;
 import fr.irit.smac.amak.aid.AID;
 import fr.irit.smac.functions.OracleFunction;
+import fr.irit.smac.generator.MetaVariable;
 import fr.irit.smac.lxplot.LxPlot;
 import fr.irit.smac.lxplot.commons.ChartType;
 import fr.irit.smac.messages.MessageParameter;
@@ -80,6 +81,8 @@ public class AmasF extends Amas<EnvironmentF>{
 	
 	
 	private List<AGFDataModel> agfDataModels;
+	
+	private Map<String,MetaVariable> metaVariables;
 
 
 	/**
@@ -222,6 +225,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		this.allAGFunctions = new TreeMap<String,AGFunction>();
 		this.parametersUsefulLastCycle = new TreeSet<String>();
 		this.agfDataModels = new ArrayList<AGFDataModel>();
+		this.metaVariables = new TreeMap<String,MetaVariable>();
 
 		//List<String> variablestmp = new ArrayList<String>(this.environment.getVariables());
 		List<String> variablesShieldTmp  = new ArrayList<String>(this.environment.getShieldVariables());
@@ -727,6 +731,13 @@ public class AmasF extends Amas<EnvironmentF>{
 		return this.allAGFunctions.get(name);
 	}
 
+	/**
+	 * Return the name of the agent with matching aid
+	 * 
+	 * @param aid
+	 * 
+	 * @return the name
+	 */
 	public String getAGFNameWithAID(AID aid) {
 		String res = "";
 		Iterator<AGFunction> iter = this.allAGFunctions.values().iterator();
@@ -739,6 +750,28 @@ public class AmasF extends Amas<EnvironmentF>{
 			}
 		}
 		return res;
+	}
+	
+	/**
+	 * Create a new MetaVariable and add it to the collection
+	 * 
+	 * @param nbVar
+	 * 		The number of variable in the metavariable
+	 */
+	public void createMetaVariable(int nbVar) {
+		MetaVariable meta = new MetaVariable();
+		List<String> variablesRemaining = new ArrayList<String>(this.environment.getShieldVariables());
+		for(int i = 0 ; i < variablesRemaining.size(); i++) {
+			meta.addVariable(variablesRemaining.remove(this.r.nextInt(variablesRemaining.size())));
+		}
+		String name = "[";
+		for(String s :meta.getVariables()) {
+			name += s+",";
+		}
+		name = name.substring(0, name.length()-1);
+		name += "]";
+		meta.setName(name);
+		this.metaVariables.put(meta.getName(), meta);
 	}
 
 }
