@@ -51,6 +51,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 	private String capacity;
 
 	private int criticality = 0;
+	
+	private int calculCriticality = 0;
 
 	private int idZone;
 
@@ -220,6 +222,8 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 
 		this.old_neighbours = this.neighbours;
 		this.neighbours = new ArrayList<AGFunction>();
+		
+		this.parameters.clear();
 
 		switch(getAmas().getEnvironment().getExpe()) {
 		case LPD:
@@ -458,6 +462,11 @@ public class AGFunction extends CommunicatingAgent<AmasF,EnvironmentF>{
 				List<String> calcCrit = new ArrayList<String>(this.parametersUseful);
 				calcCrit.removeAll(this.parametersCommunicated);
 				criticality = calcCrit.size();
+				
+				//Calcul criticality, nb variable parameter missing
+				Set<String> dataNotPercept = new TreeSet<String>(this.parametersVariables);
+				dataNotPercept.removeAll(this.parameters.keySet())
+;				this.calculCriticality = dataNotPercept.size();
 			}
 			break;
 		default:

@@ -764,7 +764,7 @@ public class AmasF extends Amas<EnvironmentF>{
 		for(int i = 0 ; i < variablesRemaining.size(); i++) {
 			meta.addVariable(variablesRemaining.remove(this.r.nextInt(variablesRemaining.size())));
 		}
-		String name = "[";
+		String name = "Meta [";
 		for(String s :meta.getVariables()) {
 			name += s+",";
 		}
