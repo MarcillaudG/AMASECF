@@ -8,14 +8,28 @@ public class InputAgent {
 	
 	private DataAgent currentData;
 	
-	public InputAgent(String name) {
+	private double lastValue;
+	
+	private double lastFeedback;
+	
+	private LearningFunction function;
+	
+	public InputAgent(String name, LearningFunction function) {
 		this.name = name;
 		this.influence = 0.0;
+		this.lastFeedback = 0.0;
+		this.function = function;
 	}
 	
 	public String getName() {
 		return this.name;
 	}
 	
+	public DataAgent getCurrentData() {
+		return this.currentData;
+	}
 	
+	public void updateInfluence(double influence) {
+		
+	}
 }
