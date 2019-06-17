@@ -50,5 +50,6 @@ public class SumFunction extends Function{
 		return res;
 		
 	}
+	
 
 }
