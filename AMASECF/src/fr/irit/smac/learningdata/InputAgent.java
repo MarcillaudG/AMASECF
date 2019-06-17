@@ -62,9 +62,6 @@ public class InputAgent {
 		this.historyValues.add(currentData.getValue());
 		this.lastData = currentData;
 		
-		if(this.lastData != null) {
-			computeInfluence();
-		}
 		
 	}
 
@@ -109,6 +106,7 @@ public class InputAgent {
 	
 	/**
 	 * Decrease the influence
+	 * 
 	 * @param ope
 	 */
 	private void decreaseInfluence(Operator ope) {
@@ -116,7 +114,9 @@ public class InputAgent {
 	}
 
 	public void decideAndAct() {
-		// TODO Auto-generated method stub
+		if(this.lastData != null) {
+			computeInfluence();
+		}
 		
 
 		this.lastValue = currentData.getValue();
