@@ -11,30 +11,33 @@ public class DataAgent {
 
 	private Map<String,Double> trustValues;
 	private String name;
-	
+
 	private double value;
-	
+
 	private LearningFunction function;
 	private double feedback;
-	
+
 	private String will;
-	
+
 	private List<String> historyInput;
-	
+
 	private List<DataAgent> dataAgentToDiscuss;
-	
+
 	private List<String> namesOfConcurrent;
-	
+
 	private Map<String,Double> influences;
-	
+
 	private Set<String> inputsAvailable;
-	
+
 	private static double INIT_VALUE = 0.5;
-	
-	
-	public DataAgent(String name,LearningFunction function) {
+
+	private int id;
+
+
+	public DataAgent(String name,LearningFunction function, int id) {
 		this.name = name;
 		this.function = function;
+		this.id = id;
 		init();
 	}
 
@@ -48,31 +51,31 @@ public class DataAgent {
 		this.influences = new TreeMap<String,Double>();
 		this.inputsAvailable = new TreeSet<String>();
 	}
-	
+
 	public void addNewInputAgent(String name) {
 		this.trustValues.put(name, DataAgent.INIT_VALUE);
 	}
-	
+
 	public String getName() {
 		return this.name;
 	}
-	
+
 	public void restoreTrustValue(String name) {
 		this.trustValues.put(name, DataAgent.INIT_VALUE);
 	}
-	
+
 	public void removeInputAgent(String name) {
 		this.trustValues.remove(name);
 	}
-	
+
 	public void setValue(Double value) {
 		this.value = value;
 	}
-	
+
 	public double getValue() {
 		return this.value;
 	}
-	
+
 	/**
 	 * Return the name of the input the agent want to be part of
 	 * 
@@ -84,8 +87,10 @@ public class DataAgent {
 
 	public void setFeedback(double feedback) {
 		this.feedback= feedback;
-		
-		this.updateTrustValues();
+
+		if(this.will != null) {
+			this.updateTrustValues();
+		}
 	}
 
 	/**
@@ -96,46 +101,74 @@ public class DataAgent {
 		for(String nameOfData : this.namesOfConcurrent) {
 			this.dataAgentToDiscuss.add(this.function.getDataAgentWithName(nameOfData));
 		}
-		
+
+		this.value = this.function.getDataValue(this.name);
 		this.influences = this.function.getInfluences();
-		
+
 	}
 
 	/**
 	 * Decision
 	 */
 	public void decideAndAct() {
-		
+
 		// Cooperation
 		this.cooperate();
 		double max = 0.0;
+		this.will = null;
 		for(String inputs : this.inputsAvailable) {
 			if(this.trustValues.get(inputs) > max) {
 				this.will = inputs;
 				max = this.trustValues.get(inputs);
 			}
 		}
-		
+		if(this.id == 1) {
+			System.out.println(this.toString() + " Choice : "+this.will +" with trust " +this.trustValues.get(this.will));
+		}
+
 	}
 
 	private void updateTrustValues() {
-		// TODO Auto-generated method stub
-		
+		int sizeHistory = this.function.getHistoryFeedback().size();
+		if(sizeHistory > 1) {
+			if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
+				this.trustValues.put(this.will, this.trustValues.get(will)-0.01);
+			}
+			else {
+				this.trustValues.put(this.will, this.trustValues.get(will)+0.05);
+			}
+		}
+		if(sizeHistory > 2) {
+			if(function.getHistoryFeedback().get(sizeHistory-1) > function.getHistoryFeedback().get(sizeHistory-2)) {
+				this.trustValues.put(this.will, this.trustValues.get(will)-0.05);
+			}
+			else {
+				if(!function.getHistoryFeedback().get(sizeHistory-1).equals(function.getHistoryFeedback().get(sizeHistory-2))) {
+					this.trustValues.put(this.will, this.trustValues.get(will)+0.05);
+				}
+			}
+		}
+
 	}
-	
+
 	/**
 	 * Remove from the list of input available  the will
 	 * if someone has a higher priority
 	 */
 	private void cooperate() {
-		for(DataAgent others : this.dataAgentToDiscuss) {
-			if(others.influences.get(this.will) > this.influences.get(this.will)) {
-				this.inputsAvailable.remove(this.will);
-			}
-			else {
-				if(others.influences.get(this.will) == this.influences.get(this.will)) {
-					if(others.name.compareTo(this.name) < 0) {
+		if(this.will != null) {
+			for(DataAgent others : this.dataAgentToDiscuss) {
+				if(others.will != null) {
+					if(others.influences.get(this.will) > this.influences.get(this.will)) {
 						this.inputsAvailable.remove(this.will);
+					}
+					else {
+						String myname = this.name;
+						if(others.influences.get(this.will).equals(this.influences.get(this.will))) {
+							if(others.name.compareTo(myname) < 0) {
+								this.inputsAvailable.remove(this.will);
+							}
+						}
 					}
 				}
 			}
@@ -157,6 +190,17 @@ public class DataAgent {
 	public void setInputAvailable(Set<String> inputs) {
 		this.inputsAvailable.clear();
 		this.inputsAvailable.addAll(inputs);
-		
+
 	}
+
+	@Override
+	public String toString() {
+		return "DataAgent [id="+id +"name=" + name + "]";
+	}
+
+	public Map<String, Double> getTrustValues() {
+		return this.trustValues;
+	}
+
+
 }

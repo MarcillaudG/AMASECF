@@ -10,6 +10,8 @@ public class InputAgent {
 	private double influence;
 
 	private String name;
+	
+	private int id;
 
 	private DataAgent currentData;
 
@@ -29,9 +31,10 @@ public class InputAgent {
 
 	private Map<Operator,Double> influences;
 
-	public InputAgent(String name, LearningFunction function) {
+	public InputAgent(String name, LearningFunction function, int id) {
 		this.name = name;
 		this.function = function;
+		this.id = id;
 		init();
 	}
 
@@ -64,34 +67,36 @@ public class InputAgent {
 			this.lastData = currentData;
 		}
 
-
 	}
 
 	/**
 	 * Update the influence with the history
 	 */
 	private void computeInfluence() {
-		// Si il y a moins d ecart
-		if(Math.abs(this.feedback) < Math.abs(this.lastFeedback)) {
-			// Si la nouvelle valeur est plus grande
-			if(this.historyValues.get(historyValues.size()-1) > this.historyValues.get(historyValues.size()-2)) {
-				this.increaseInfluence(Operator.PLUS);
+		if(this.function.getCycle()> 3) {
+			// Si il y a moins d ecart
+			if(Math.abs(this.feedback) < Math.abs(this.lastFeedback)) {
+				// Si la nouvelle valeur est plus grande
+				if(this.historyValues.get(historyValues.size()-1) > this.historyValues.get(historyValues.size()-2)) {
+					this.increaseInfluence(Operator.PLUS);
+				}
+				// Si la nouvelle valeur est plus petite
+				else {
+					this.increaseInfluence(Operator.MOINS);
+				}
 			}
-			// Si la nouvelle valeur est plus petite
+			// S'il y a plus d'ecart
 			else {
-				this.increaseInfluence(Operator.MOINS);
-			}
-		}
-		// S'il y a plus d'ecart
-		else {
-			// Si la nouvelle valeur est plus grande
-			if(this.historyValues.get(historyValues.size()-1) > this.historyValues.get(historyValues.size()-2)) {
-				this.decreaseInfluence(Operator.PLUS);
-			}
-			// Si la nouvelle valeur est plus petite
-			else {
-				this.increaseInfluence(Operator.MOINS);
-				this.decreaseInfluence(Operator.PLUS);
+				// Si la nouvelle valeur est plus grande
+				//System.out.println(this.historyValues);
+				if(this.historyValues.get(historyValues.size()-1) > this.historyValues.get(historyValues.size()-2)) {
+					this.decreaseInfluence(Operator.PLUS);
+				}
+				// Si la nouvelle valeur est plus petite
+				else {
+					this.increaseInfluence(Operator.MOINS);
+					this.decreaseInfluence(Operator.PLUS);
+				}
 			}
 		}
 
@@ -120,8 +125,6 @@ public class InputAgent {
 			computeInfluence();
 		}
 
-
-		this.lastValue = currentData.getValue();
 	}
 
 	/**
@@ -136,4 +139,19 @@ public class InputAgent {
 	public Double getInfluence() {
 		return this.influence;
 	}
+
+	public void setDataAgent(DataAgent dataAgent) {
+		this.currentData = dataAgent;
+
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+	
+	
 }

@@ -34,7 +34,7 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 	
 	private SyntheticFunction degradeFunction(String name, int nbVar) {
 		try {
-			return this.oracles.get(name).degradeFunction(nbVar);
+			return this.oracles.get(name).degradeFunctionInput(nbVar);
 		} catch (TooMuchVariableToRemoveException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -52,7 +52,7 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 	}
 
 	public double getResultOracle(String name) {
-		return this.oracles.get(name).compute();
+		return this.oracles.get(name).computeInput();
 	}
 
 }

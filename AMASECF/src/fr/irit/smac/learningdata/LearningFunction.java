@@ -34,6 +34,10 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private String name;
 	private double feedback;
 
+	private int nbDataAgent = 0;
+	
+	private int nbInputAgent = 0;
+
 
 	public LearningFunction(AmasLearning amas, Object[] params, String name, SyntheticFunction function) {
 		super(amas, params);
@@ -46,11 +50,11 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.allDataAgent = new TreeMap<String,DataAgent>();
 		this.allInputAgent = new TreeMap<String,InputAgent>();
 		this.inputAgents = new ArrayList<InputAgent>();
+		this.historyFeedback = new ArrayList<Double>();
 		this.feedback = 0.0;
 
-		Iterator<String> iter = this.function.getOperands().iterator();
-		while(iter.hasNext()) {
-			this.createInputAgent(iter.next());
+		for(Integer i : this.function.getInputIDRemoved()) {
+			this.createInputAgent("Input:"+i, i);
 		}
 	}
 
@@ -60,6 +64,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	@Override
 	protected void onAgentCycleBegin() {
+
+		System.out.println("Cycle : "+this.getAmas().getCycle());
+		System.out.println("NB DATA : "+this.nbDataAgent);
 		this.valueOfOperand = new ArrayDeque<Double>();
 		this.variableInEnvironment = new TreeSet<String>();
 	}
@@ -90,11 +97,19 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	protected void onDecide() {
 
 		this.startInputAgent();
-
 		this.startDataAgent();
 
-		for(int i = 0; i < this.inputAgents.size();i++) {
+		for(DataAgent dataAgent : this.allDataAgent.values()) {
+			if(dataAgent.getWill() != null) {
+				this.allInputAgent.get(dataAgent.getWill()).setDataAgent(dataAgent);
+			}
+		}
+
+		/*for(int i = 0; i < this.inputAgents.size();i++) {
 			this.valueOfOperand.offer((this.inputAgents.get(i).getCurrentData().getValue()));
+		}*/
+		for(InputAgent inputAgent : this.allInputAgent.values()) {
+			this.function.setOperandOfInput(inputAgent.getId(),inputAgent.getCurrentData().getName());
 		}
 	}
 
@@ -134,7 +149,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 */
 	private void startDataAgent() {
 		boolean ended = false;
-		
+
 		// Initialize the plan
 		Map<String, List<String>> acquisition = new TreeMap<String,List<String>>();
 		for(String nameOfInput: this.allInputAgent.keySet()) {
@@ -148,10 +163,13 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 		// while the plan is not finalize
 		while(!ended) {
+			for(List<String> list :acquisition.values()) {
+				list.clear();
+			}
 			ended = true;
 			List<DataAgent> dataAgentRemaining = new ArrayList<DataAgent>(this.allDataAgent.values());
 			Collections.shuffle(dataAgentRemaining);
-			
+
 			// All dataAgent perceives
 			for(DataAgent dataAgent : dataAgentRemaining) {
 				dataAgent.perceive();
@@ -161,7 +179,10 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			// All DataAgent decide and act
 			for(DataAgent dataAgent : dataAgentRemaining) {
 				dataAgent.decideAndAct();
-				acquisition.get(dataAgent.getWill()).add(dataAgent.getName());
+				if(dataAgent.getWill() != null) {
+					acquisition.get(dataAgent.getWill()).add(dataAgent.getName());
+				}
+
 			}
 			for(String nameOfInput : acquisition.keySet()) {
 				if(acquisition.get(nameOfInput).size() > 1) {
@@ -172,20 +193,43 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 				}
 			}
 		}
+		System.out.println(acquisition);
 
 	}
 
 	@Override
 	protected void onAct() {
-		double result = this.function.compute();
+		double result = this.function.computeInput();
 		this.feedback = result - this.getAmas().getResultOracle(this.name);
+		/*for(DataAgent dataAgent : this.allDataAgent.values()) {
+			System.out.println(dataAgent);
+			System.out.println(dataAgent.getTrustValues());
+		}*/
+		System.out.println(feedback);
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
+	/**
+	 * Create a data agent
+	 * 
+	 * @param name
+	 * 
+	 * @return true if the agent does not already exist
+	 */
 	private boolean createDataAgent(String name) {
 		if(this.allDataAgent.keySet().contains(name)) {
 			return false;
 		}
-		DataAgent dag = new DataAgent(name,this);
+		DataAgent dag = new DataAgent(name,this, nbDataAgent);
+		nbDataAgent++;
+		for(InputAgent inputAgent : this.allInputAgent.values()) {
+			dag.addNewInputAgent(inputAgent.getName());
+		}
 		this.allDataAgent.put(dag.getName(), dag);
 		return true;
 	}
@@ -195,11 +239,11 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 * @param name
 	 * @return true if the agent does not already exist
 	 */
-	private boolean createInputAgent(String name) {
+	private boolean createInputAgent(String name, int id) {
 		if(this.allInputAgent.containsKey(name)) {
 			return false;
 		}
-		InputAgent inag = new InputAgent(name,this);
+		InputAgent inag = new InputAgent(name,this, id);
 		this.allInputAgent.put(inag.getName(), inag);
 		return true;
 	}
@@ -227,5 +271,13 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			influences.put(nameOfInput, this.allInputAgent.get(nameOfInput).getInfluence());
 		}
 		return influences;
+	}
+
+	public int getCycle() {
+		return this.getAmas().getCycle();
+	}
+
+	public double getDataValue(String name2) {
+		return this.getAmas().getValueOfVariable(name2);
 	}
 }
