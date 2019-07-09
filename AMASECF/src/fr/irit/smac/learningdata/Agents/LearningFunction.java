@@ -1,4 +1,4 @@
-package fr.irit.smac.learningdata;
+package fr.irit.smac.learningdata.Agents;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -14,6 +14,9 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import fr.irit.smac.amak.Agent;
+import fr.irit.smac.learningdata.AmasLearning;
+import fr.irit.smac.learningdata.EnvironmentLearning;
+import fr.irit.smac.modelui.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
 
 public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
@@ -21,7 +24,6 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private SyntheticFunction function;
 	private Deque<Double> valueOfOperand;
 
-	private List<InputAgent> inputAgents;
 
 	private Set<String> variableInEnvironment;
 
@@ -30,14 +32,18 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private Map<String,InputAgent> allInputAgent;
 
 	private Map<String,DataAgent> allDataAgent;
+	
+	private Map<InputAgent, RowAgent> allRowAgent;
+	
+	private Map<DataAgent, ColumnAgent> allColumnAgent;
+	
+	private Map<String,AgentLearning> allAgents;
 
 	private String name;
 	private double feedback;
 
 	private int nbDataAgent = 0;
 	
-	private int nbInputAgent = 0;
-
 
 	public LearningFunction(AmasLearning amas, Object[] params, String name, SyntheticFunction function) {
 		super(amas, params);
@@ -49,12 +55,15 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private void init() {
 		this.allDataAgent = new TreeMap<String,DataAgent>();
 		this.allInputAgent = new TreeMap<String,InputAgent>();
-		this.inputAgents = new ArrayList<InputAgent>();
+		this.allColumnAgent = new TreeMap<DataAgent, ColumnAgent>();
+		this.allRowAgent = new TreeMap<InputAgent, RowAgent>();
 		this.historyFeedback = new ArrayList<Double>();
+		this.allAgents = new TreeMap<String,AgentLearning>();
 		this.feedback = 0.0;
 
 		for(Integer i : this.function.getInputIDRemoved()) {
 			this.createInputAgent("Input:"+i, i);
+			this.createRowAgent("Row"+i,this.allInputAgent.get("Input"+i));
 		}
 	}
 
@@ -162,6 +171,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 
 		// while the plan is not finalize
+		//TODO ICI le cycle
 		while(!ended) {
 			for(List<String> list :acquisition.values()) {
 				list.clear();
@@ -231,6 +241,11 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			dag.addNewInputAgent(inputAgent.getName());
 		}
 		this.allDataAgent.put(dag.getName(), dag);
+		this.allAgents.put(name, dag);
+		
+		for(RowAgent rowAgent: this.allRowAgent.values()) {
+			rowAgent.addDataAgent(dag);
+		}
 		return true;
 	}
 
@@ -245,6 +260,17 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 		InputAgent inag = new InputAgent(name,this, id);
 		this.allInputAgent.put(inag.getName(), inag);
+		this.allAgents.put(inag.getName(), inag);
+		return true;
+	}
+	
+	private boolean createRowAgent(String name, InputAgent input) {
+		if(this.allRowAgent.containsKey(input)) {
+			return false;
+		}
+		RowAgent rowAgent = new RowAgent( name,input);
+		this.allRowAgent.put(input, rowAgent);
+		this.allAgents.put(name, rowAgent);
 		return true;
 	}
 
@@ -279,5 +305,54 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	public double getDataValue(String name2) {
 		return this.getAmas().getValueOfVariable(name2);
+	}
+
+	public Set<String> getInputsName() {
+		return this.allInputAgent.keySet();
+	}
+
+	public void addListenerToInput(String input, InputLearningModel model) {
+		this.allInputAgent.get(input).addPropertyChangeListener(model);
+		
+	}
+
+	
+	
+	/**
+	 * Return the column agent with the name
+	 * 
+	 * @param name
+	 * 
+	 * @return the column agent
+	 */
+	public ColumnAgent getColumnAgentWithName(String name) {
+		return this.allColumnAgent.get(name);
+	}
+	
+	/**
+	 * Return the row agent with the name
+	 * 
+	 * @param name
+	 * 
+	 * @return the row agent
+	 */
+	public RowAgent getRowAgentWithName(String name) {
+		return this.allRowAgent.get(name);
+	}
+
+	public void informDecision(DataAgent dataAgent,Set<String> inputsChosen) {
+		for(String input : inputsChosen) {
+			this.allRowAgent.get(this.allInputAgent.get(input)).dataAgentApplying(dataAgent);
+		}
+		
+	}
+
+	public void acceptRequest(String agentName, int idRequest) {
+		this.allAgents.get(agentName).requestAccepted(idRequest);
+	}
+
+	public void rejectRequest(String agentName, int id) {
+		this.allAgents.get(agentName).requestDenied(id);
+		
 	}
 }

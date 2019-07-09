@@ -16,6 +16,12 @@ public class EnvironmentLearning extends Environment{
 		
 		init();
 	}
+	
+	public EnvironmentLearning(Object[] params) {
+		super(Scheduling.DEFAULT, params);
+		
+		init();
+	}
 
 	private void init() {
 		this.shieldUser = new ShieldUser();

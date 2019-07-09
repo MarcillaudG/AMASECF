@@ -7,6 +7,8 @@ import java.util.TreeMap;
 
 import fr.irit.smac.amak.Amas;
 import fr.irit.smac.amak.Scheduling;
+import fr.irit.smac.learningdata.Agents.LearningFunction;
+import fr.irit.smac.modelui.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
 import fr.irit.smac.shield.exceptions.TooMuchVariableToRemoveException;
 
@@ -20,6 +22,13 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 		
 		init(params);
 	}
+	
+
+	public AmasLearning(EnvironmentLearning environment,Object[] params) {
+		super(environment, Scheduling.DEFAULT, params);
+		
+		init(params);
+	}
 
 	private void init(Object[] params) {
 		this.allFunctions = new TreeMap<String,LearningFunction>();
@@ -29,6 +38,9 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 		String name = "Function1";
 		this.oracles.put(name, this.environment.generateFunction(name, 100));
 		LearningFunction lfun = new LearningFunction(this, params,name,this.degradeFunction(name,20));
+		for(String input : lfun.getInputsName()) {
+			
+		}
 		this.allFunctions.put(lfun.getName(), lfun);
 	}
 	
@@ -53,6 +65,17 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 
 	public double getResultOracle(String name) {
 		return this.oracles.get(name).computeInput();
+	}
+
+
+	public Set<String> getInputsName(String name) {
+		return this.allFunctions.get(name).getInputsName();
+	}
+
+
+	public void addListenerToInput(String function,String input, InputLearningModel model) {
+		this.allFunctions.get(function).addListenerToInput(input,model);
+		
 	}
 
 }

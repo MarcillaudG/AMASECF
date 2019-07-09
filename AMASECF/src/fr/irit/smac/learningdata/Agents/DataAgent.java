@@ -1,4 +1,4 @@
-package fr.irit.smac.learningdata;
+package fr.irit.smac.learningdata.Agents;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,7 +7,11 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-public class DataAgent {
+import fr.irit.smac.learningdata.requests.Request;
+import fr.irit.smac.learningdata.requests.RequestColumn;
+import fr.irit.smac.learningdata.requests.RequestRow;
+
+public class DataAgent extends AgentLearning{
 
 	private Map<String,Double> trustValues;
 	private String name;
@@ -19,7 +23,6 @@ public class DataAgent {
 
 	private String will;
 
-	private List<String> historyInput;
 
 	private List<DataAgent> dataAgentToDiscuss;
 
@@ -31,7 +34,11 @@ public class DataAgent {
 
 	private static double INIT_VALUE = 0.5;
 
+	private List<Request> mailbox;
+	
 	private int id;
+	private Set<String> inputChosen;
+	private double criticality;
 
 
 	public DataAgent(String name,LearningFunction function, int id) {
@@ -45,11 +52,12 @@ public class DataAgent {
 		this.value = 0.0;
 		this.feedback = 0.0;
 		this.trustValues = new TreeMap<String,Double>();
-		this.historyInput = new ArrayList<String>();
 		this.dataAgentToDiscuss = new ArrayList<DataAgent>();
 		this.namesOfConcurrent = new ArrayList<String>();
 		this.influences = new TreeMap<String,Double>();
 		this.inputsAvailable = new TreeSet<String>();
+		this.inputChosen = new TreeSet<String>();
+		this.mailbox = new ArrayList<Request>();
 	}
 
 	public void addNewInputAgent(String name) {
@@ -98,6 +106,7 @@ public class DataAgent {
 	 */
 	public void perceive() {
 		this.dataAgentToDiscuss.clear();
+		this.inputChosen.clear();
 		for(String nameOfData : this.namesOfConcurrent) {
 			this.dataAgentToDiscuss.add(this.function.getDataAgentWithName(nameOfData));
 		}
@@ -113,7 +122,7 @@ public class DataAgent {
 	public void decideAndAct() {
 
 		// Cooperation
-		this.cooperate();
+		/*this.cooperate();
 		double max = 0.0;
 		this.will = null;
 		for(String inputs : this.inputsAvailable) {
@@ -121,10 +130,14 @@ public class DataAgent {
 				this.will = inputs;
 				max = this.trustValues.get(inputs);
 			}
-		}
+		}*/
+		treatRequest();
+		
 		if(this.id == 1) {
-			System.out.println(this.toString() + " Choice : "+this.will +" with trust " +this.trustValues.get(this.will));
+			System.out.println(this.toString() + " Choice : "+this.inputsAvailable );
 		}
+		
+		this.function.informDecision(this,this.inputsAvailable);
 
 	}
 
@@ -202,5 +215,100 @@ public class DataAgent {
 		return this.trustValues;
 	}
 
+
+	public Set<String> getInputChosen() {
+		return this.inputChosen;
+	}
+
+	public void sendRequest(Request request) {
+		this.mailbox.add(request);
+	}
+
+	private void treatRequest() {
+		double maxCrit = 0.0;
+		Request chosen = null;
+		for(Request request : this.mailbox) {
+			if(request.getCriticality() > maxCrit) {
+				chosen = request;
+			}
+		}
+		
+		if(chosen != null) {
+			if(chosen instanceof RequestColumn) {
+				this.treatRequestColumn((RequestColumn) chosen);
+			}
+			if(chosen instanceof RequestRow) {
+				this.treatRequestRow((RequestRow) chosen);
+			}
+		}
+		this.mailbox.clear();
+	}
+	
+	private void treatRequestColumn(RequestColumn request) {
+		if(request.getCriticality() > this.criticality) {
+			double minTrust = 10.0;
+			String inputToRemove = "";
+			for(String s : this.trustValues.keySet()) {
+				Double d = this.trustValues.get(s);
+				if(d < minTrust) {
+					minTrust = d;
+					inputToRemove = s;
+				}
+			}
+			this.inputsAvailable.remove(inputToRemove);
+			this.function.acceptRequest(request.getAgentName(),request.getId());
+		}
+		else {
+			this.function.rejectRequest(request.getAgentName(),request.getId());
+		}
+		
+	}
+
+
+	private void treatRequestRow(RequestRow request) {
+		
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + id;
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		DataAgent other = (DataAgent) obj;
+		if (id != other.id)
+			return false;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
+			return false;
+		return true;
+	}
+
+	@Override
+	public void requestAccepted(int id) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void requestDenied(int id) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	
 
 }
