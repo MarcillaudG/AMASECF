@@ -20,12 +20,15 @@ public class ColumnAgent extends AgentLearning{
 	
 	private Map<Integer,RequestColumn> waitingRequest;
 	
+	private boolean requestDenied;
+	
 	public ColumnAgent(String name, DataAgent dataAgent, List<InputAgent> column) {
 		this.name = name;
 		this.dataAgent = dataAgent;
 		this.column = column;
 		this.idRequest = 0;
 		this.criticality = 0.0;
+		this.requestDenied = false;
 		this.waitingRequest = new TreeMap<Integer,RequestColumn>();
 	}
 	
@@ -40,7 +43,10 @@ public class ColumnAgent extends AgentLearning{
 	}
 	
 	public void decideAndAct() {
-		if(this.criticality > 0) {
+		if(this.requestDenied) {
+			this.criticality = Math.pow(this.criticality, 2);
+		}
+		if(this.criticality > 0 ) {
 			searchForService();
 		}
 	}
@@ -52,6 +58,7 @@ public class ColumnAgent extends AgentLearning{
 		this.waitingRequest.put(idRequest, new RequestColumn(this.criticality, this.name,idRequest));
 		this.dataAgent.sendRequest(this.waitingRequest.get(idRequest));
 		idRequest++;
+		this.requestDenied = false;
 	}
 
 	public double getCriticality() {
@@ -78,8 +85,8 @@ public class ColumnAgent extends AgentLearning{
 
 	@Override
 	public void requestDenied(int id) {
-		// TODO Auto-generated method stub
-		
+		this.waitingRequest.remove(id);
+		this.requestDenied = true;
 	}
 
 	

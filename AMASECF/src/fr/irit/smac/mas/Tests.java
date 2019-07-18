@@ -15,16 +15,13 @@ public class Tests {
 		//AmasF amas = new AmasF(new EnvironmentF(Scheduling.DEFAULT, args, Expe.RANDOM), Scheduling.DEFAULT, args);
 		
 		List<String> test = new ArrayList<String>();
-		
-		for(int i = 0; i < 10; i++) {
-			test.add(i+"");
-		}
-		
-		Iterator<String> iter = test.iterator();
-		while(iter.hasNext()) {
-			System.out.println(iter.next());
-		}
+		int i = 0;
+		Tests.testInt(i++);
+		Tests.testInt(i);
 		
 	}
-
+	
+	public static void testInt(int i) {
+		System.out.println(i);
+	}
 }

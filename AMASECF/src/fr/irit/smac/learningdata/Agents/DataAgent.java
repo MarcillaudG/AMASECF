@@ -224,12 +224,23 @@ public class DataAgent extends AgentLearning{
 		this.mailbox.add(request);
 	}
 
+	/**
+	 * Treat only one request
+	 * 
+	 * Choose which request has priority
+	 * 
+	 * And then treat it
+	 */
 	private void treatRequest() {
 		double maxCrit = 0.0;
 		Request chosen = null;
 		for(Request request : this.mailbox) {
 			if(request.getCriticality() > maxCrit) {
+				this.function.rejectRequest(chosen.getAgentName(), chosen.getId());
 				chosen = request;
+			}
+			else {
+				this.function.rejectRequest(chosen.getAgentName(), chosen.getId());
 			}
 		}
 		
@@ -266,7 +277,10 @@ public class DataAgent extends AgentLearning{
 
 
 	private void treatRequestRow(RequestRow request) {
-		
+		if(request.getCriticality() > this.criticality) {
+			this.inputsAvailable.remove(request.getInputName());
+			this.function.acceptRequest(request.getAgentName(), request.getId());
+		}
 	}
 
 	@Override
@@ -305,6 +319,11 @@ public class DataAgent extends AgentLearning{
 
 	@Override
 	public void requestDenied(int id) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void updateTrust(double feedback2) {
 		// TODO Auto-generated method stub
 		
 	}

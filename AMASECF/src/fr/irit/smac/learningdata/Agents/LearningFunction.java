@@ -32,18 +32,18 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private Map<String,InputAgent> allInputAgent;
 
 	private Map<String,DataAgent> allDataAgent;
-	
+
 	private Map<InputAgent, RowAgent> allRowAgent;
-	
+
 	private Map<DataAgent, ColumnAgent> allColumnAgent;
-	
+
 	private Map<String,AgentLearning> allAgents;
 
 	private String name;
 	private double feedback;
 
 	private int nbDataAgent = 0;
-	
+
 
 	public LearningFunction(AmasLearning amas, Object[] params, String name, SyntheticFunction function) {
 		super(amas, params);
@@ -78,6 +78,10 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		System.out.println("NB DATA : "+this.nbDataAgent);
 		this.valueOfOperand = new ArrayDeque<Double>();
 		this.variableInEnvironment = new TreeSet<String>();
+		
+		// Update the influence and the trust
+		
+
 	}
 
 	@Override
@@ -99,13 +103,38 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(String s : dataAgentToCreate) {
 			this.createDataAgent(s);
 		}
+		
+
+		// Give the feedback to the input agent
+		for(InputAgent inputAgent : this.allInputAgent.values()) {
+			inputAgent.updateInfluence(this.feedback);
+		}
+		
+
+		// Give the feedback of the function to all dataAgent
+		for(DataAgent dataAgent : this.allDataAgent.values()) {
+			dataAgent.setInputAvailable(this.allInputAgent.keySet());
+			dataAgent.updateTrust(this.feedback);
+		}
 
 	}
 
+	/**
+	 * Active the different agent in the system
+	 */
 	@Override
 	protected void onDecide() {
 
+		//Row Agent
+		this.startRowAgent();
+
+		//ColumnAgent
+		this.startColumnAgent();
+
+		// InputAgent
 		this.startInputAgent();
+
+		// DataAgent
 		this.startDataAgent();
 
 		for(DataAgent dataAgent : this.allDataAgent.values()) {
@@ -114,9 +143,6 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			}
 		}
 
-		/*for(int i = 0; i < this.inputAgents.size();i++) {
-			this.valueOfOperand.offer((this.inputAgents.get(i).getCurrentData().getValue()));
-		}*/
 		for(InputAgent inputAgent : this.allInputAgent.values()) {
 			this.function.setOperandOfInput(inputAgent.getId(),inputAgent.getCurrentData().getName());
 		}
@@ -124,24 +150,45 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 
 	/**
+	 * Start the cycle for all row agent
+	 */
+	private void startRowAgent() {
+		// Random order
+		List<RowAgent> rowAgentRemaining = new ArrayList<RowAgent>(this.allRowAgent.values());
+		Collections.shuffle(rowAgentRemaining);
+
+		for(RowAgent rowAgent : rowAgentRemaining) {
+			rowAgent.perceive();
+			rowAgent.decideAndAct();
+		}
+	}
+
+	/**
+	 * Start the cycle for all ColumnAgent
+	 */
+	private void startColumnAgent() {
+		// Random order
+		List<ColumnAgent> columnAgentRemaining = new ArrayList<ColumnAgent>(this.allColumnAgent.values());
+		Collections.shuffle(columnAgentRemaining);
+
+		for(ColumnAgent columnAgent : columnAgentRemaining) {
+			columnAgent.perceive();
+			columnAgent.decideAndAct();
+		}
+	}
+
+	/**
 	 * Start the cycle for all the InputAgent
 	 */
 	private void startInputAgent() {
-		boolean ended = false;
-		for(InputAgent inputAgent : this.allInputAgent.values()) {
-			inputAgent.setFeedback(this.feedback);
-		}
 
-		ended = true;
+
 		// All inputAgent perceives in random order
 		List<InputAgent> inputAgentRemaining = new ArrayList<InputAgent>(this.allInputAgent.values());
 		Collections.shuffle(inputAgentRemaining);
 		for(InputAgent inputAgent : inputAgentRemaining) {
 			inputAgent.perceive();
 		}
-		/*while(inputAgentRemaining.size() != 0) {
-				inputAgentRemaining.get(rand.nextInt(inputAgentRemaining.size())).perceive();
-			}*/
 
 		// All inputAgent decide and act in random order
 		Collections.shuffle(inputAgentRemaining);
@@ -157,49 +204,38 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 * Start the cycle for all the dataAgent
 	 */
 	private void startDataAgent() {
-		boolean ended = false;
 
 		// Initialize the plan
 		Map<String, List<String>> acquisition = new TreeMap<String,List<String>>();
 		for(String nameOfInput: this.allInputAgent.keySet()) {
 			acquisition.put(nameOfInput, new ArrayList<String>());
 		}
-		// Give the feedback of the function to all dataAgent
-		for(DataAgent dataAgent : this.allDataAgent.values()) {
-			dataAgent.setFeedback(this.feedback);
-			dataAgent.setInputAvailable(this.allInputAgent.keySet());
+		
+		for(List<String> list :acquisition.values()) {
+			list.clear();
+		}
+		
+		List<DataAgent> dataAgentRemaining = new ArrayList<DataAgent>(this.allDataAgent.values());
+		Collections.shuffle(dataAgentRemaining);
+
+		// All dataAgent perceives
+		for(DataAgent dataAgent : dataAgentRemaining) {
+			dataAgent.perceive();
 		}
 
-		// while the plan is not finalize
-		//TODO ICI le cycle
-		while(!ended) {
-			for(List<String> list :acquisition.values()) {
-				list.clear();
-			}
-			ended = true;
-			List<DataAgent> dataAgentRemaining = new ArrayList<DataAgent>(this.allDataAgent.values());
-			Collections.shuffle(dataAgentRemaining);
-
-			// All dataAgent perceives
-			for(DataAgent dataAgent : dataAgentRemaining) {
-				dataAgent.perceive();
+		Collections.shuffle(dataAgentRemaining);
+		// All DataAgent decide and act
+		for(DataAgent dataAgent : dataAgentRemaining) {
+			dataAgent.decideAndAct();
+			if(dataAgent.getWill() != null) {
+				acquisition.get(dataAgent.getWill()).add(dataAgent.getName());
 			}
 
-			Collections.shuffle(dataAgentRemaining);
-			// All DataAgent decide and act
-			for(DataAgent dataAgent : dataAgentRemaining) {
-				dataAgent.decideAndAct();
-				if(dataAgent.getWill() != null) {
-					acquisition.get(dataAgent.getWill()).add(dataAgent.getName());
-				}
-
-			}
-			for(String nameOfInput : acquisition.keySet()) {
-				if(acquisition.get(nameOfInput).size() > 1) {
-					ended = false;
-					for(String nameOfData : acquisition.get(nameOfInput)) {
-						this.allDataAgent.get(nameOfData).addConccurent(acquisition.get(nameOfInput));
-					}
+		}
+		for(String nameOfInput : acquisition.keySet()) {
+			if(acquisition.get(nameOfInput).size() > 1) {
+				for(String nameOfData : acquisition.get(nameOfInput)) {
+					this.allDataAgent.get(nameOfData).addConccurent(acquisition.get(nameOfInput));
 				}
 			}
 		}
@@ -242,7 +278,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 		this.allDataAgent.put(dag.getName(), dag);
 		this.allAgents.put(name, dag);
-		
+
 		for(RowAgent rowAgent: this.allRowAgent.values()) {
 			rowAgent.addDataAgent(dag);
 		}
@@ -263,12 +299,12 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.allAgents.put(inag.getName(), inag);
 		return true;
 	}
-	
+
 	private boolean createRowAgent(String name, InputAgent input) {
 		if(this.allRowAgent.containsKey(input)) {
 			return false;
 		}
-		RowAgent rowAgent = new RowAgent( name,input);
+		RowAgent rowAgent = new RowAgent( name,input,this);
 		this.allRowAgent.put(input, rowAgent);
 		this.allAgents.put(name, rowAgent);
 		return true;
@@ -313,11 +349,11 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	public void addListenerToInput(String input, InputLearningModel model) {
 		this.allInputAgent.get(input).addPropertyChangeListener(model);
-		
+
 	}
 
-	
-	
+
+
 	/**
 	 * Return the column agent with the name
 	 * 
@@ -328,7 +364,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	public ColumnAgent getColumnAgentWithName(String name) {
 		return this.allColumnAgent.get(name);
 	}
-	
+
 	/**
 	 * Return the row agent with the name
 	 * 
@@ -337,14 +373,14 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 * @return the row agent
 	 */
 	public RowAgent getRowAgentWithName(String name) {
-		return this.allRowAgent.get(name);
+		return (RowAgent) this.allAgents.get(name);
 	}
 
 	public void informDecision(DataAgent dataAgent,Set<String> inputsChosen) {
 		for(String input : inputsChosen) {
 			this.allRowAgent.get(this.allInputAgent.get(input)).dataAgentApplying(dataAgent);
 		}
-		
+
 	}
 
 	public void acceptRequest(String agentName, int idRequest) {
@@ -353,6 +389,6 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	public void rejectRequest(String agentName, int id) {
 		this.allAgents.get(agentName).requestDenied(id);
-		
+
 	}
 }

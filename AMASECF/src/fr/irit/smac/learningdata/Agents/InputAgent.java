@@ -210,6 +210,11 @@ public class InputAgent extends AgentLearning{
 		// TODO Auto-generated method stub
 		
 	}
+
+	public void updateInfluence(double feedback) {
+		// TODO Auto-generated method stub
+		
+	}
 	
 	
 }
