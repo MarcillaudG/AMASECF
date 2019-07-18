@@ -23,7 +23,7 @@ public class RowAgent extends AgentLearning{
 	private String name;
 
 	private Map<DataAgent,Integer> row;
-	
+
 	private Map<Integer,RequestRow> waitingRequest;
 
 	private int idRequest;
@@ -58,11 +58,13 @@ public class RowAgent extends AgentLearning{
 
 	public void perceive() {
 		for(DataAgent dataAgent: this.row.keySet()) {
-			if(dataAgent.getWill().equals(this.input.getName())) {
-				this.row.put(dataAgent, 1);
-			}
-			else {
-				this.row.put(dataAgent,0);
+			for(String will : dataAgent.getInputChosen()) {
+				if(will.equals(this.input.getName())) {
+					this.row.put(dataAgent, 1);
+				}
+				else {
+					this.row.put(dataAgent,0);
+				}
 			}
 		}
 	}

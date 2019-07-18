@@ -115,6 +115,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(DataAgent dataAgent : this.allDataAgent.values()) {
 			dataAgent.setInputAvailable(this.allInputAgent.keySet());
 			dataAgent.updateTrust(this.feedback);
+			dataAgent.clearInput();
 		}
 
 	}
@@ -138,8 +139,8 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.startDataAgent();
 
 		for(DataAgent dataAgent : this.allDataAgent.values()) {
-			if(dataAgent.getWill() != null) {
-				this.allInputAgent.get(dataAgent.getWill()).setDataAgent(dataAgent);
+			for(String will : dataAgent.getInputChosen()) {
+				this.allInputAgent.get(will).setDataAgent(dataAgent);
 			}
 		}
 
@@ -227,8 +228,8 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		// All DataAgent decide and act
 		for(DataAgent dataAgent : dataAgentRemaining) {
 			dataAgent.decideAndAct();
-			if(dataAgent.getWill() != null) {
-				acquisition.get(dataAgent.getWill()).add(dataAgent.getName());
+			for(String will : dataAgent.getInputChosen()) {
+				acquisition.get(will).add(dataAgent.getName());
 			}
 
 		}

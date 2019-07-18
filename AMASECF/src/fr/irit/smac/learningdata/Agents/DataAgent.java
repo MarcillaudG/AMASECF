@@ -21,7 +21,7 @@ public class DataAgent extends AgentLearning{
 	private LearningFunction function;
 	private double feedback;
 
-	private String will;
+	//private String will;
 
 
 	private List<DataAgent> dataAgentToDiscuss;
@@ -35,7 +35,7 @@ public class DataAgent extends AgentLearning{
 	private static double INIT_VALUE = 0.5;
 
 	private List<Request> mailbox;
-	
+
 	private int id;
 	private Set<String> inputChosen;
 	private double criticality;
@@ -89,16 +89,23 @@ public class DataAgent extends AgentLearning{
 	 * 
 	 * @return the name of the most trustworthy input
 	 */
-	public String getWill() {
+	/*public String getWill() {
 		return this.will;
-	}
+	}*/
 
 	public void setFeedback(double feedback) {
 		this.feedback= feedback;
 
-		if(this.will != null) {
+		/*if(this.will != null) {
 			this.updateTrustValues();
-		}
+		}*/
+	}
+
+	/**
+	 * Clear the choice
+	 */
+	public void clearInput() {
+		this.inputsAvailable.clear();
 	}
 
 	/**
@@ -121,43 +128,35 @@ public class DataAgent extends AgentLearning{
 	 */
 	public void decideAndAct() {
 
-		// Cooperation
-		/*this.cooperate();
-		double max = 0.0;
-		this.will = null;
-		for(String inputs : this.inputsAvailable) {
-			if(this.trustValues.get(inputs) > max) {
-				this.will = inputs;
-				max = this.trustValues.get(inputs);
-			}
-		}*/
 		treatRequest();
-		
+
 		if(this.id == 1) {
 			System.out.println(this.toString() + " Choice : "+this.inputsAvailable );
 		}
-		
+
 		this.function.informDecision(this,this.inputsAvailable);
 
 	}
 
 	private void updateTrustValues() {
-		int sizeHistory = this.function.getHistoryFeedback().size();
-		if(sizeHistory > 1) {
-			if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
-				this.trustValues.put(this.will, this.trustValues.get(will)-0.01);
+		for(String will : this.inputsAvailable) {
+			int sizeHistory = this.function.getHistoryFeedback().size();
+			if(sizeHistory > 1) {
+				if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
+					this.trustValues.put(will, this.trustValues.get(will)-0.01);
+				}
+				else {
+					this.trustValues.put(will, this.trustValues.get(will)+0.05);
+				}
 			}
-			else {
-				this.trustValues.put(this.will, this.trustValues.get(will)+0.05);
-			}
-		}
-		if(sizeHistory > 2) {
-			if(function.getHistoryFeedback().get(sizeHistory-1) > function.getHistoryFeedback().get(sizeHistory-2)) {
-				this.trustValues.put(this.will, this.trustValues.get(will)-0.05);
-			}
-			else {
-				if(!function.getHistoryFeedback().get(sizeHistory-1).equals(function.getHistoryFeedback().get(sizeHistory-2))) {
-					this.trustValues.put(this.will, this.trustValues.get(will)+0.05);
+			if(sizeHistory > 2) {
+				if(function.getHistoryFeedback().get(sizeHistory-1) > function.getHistoryFeedback().get(sizeHistory-2)) {
+					this.trustValues.put(will, this.trustValues.get(will)-0.05);
+				}
+				else {
+					if(!function.getHistoryFeedback().get(sizeHistory-1).equals(function.getHistoryFeedback().get(sizeHistory-2))) {
+						this.trustValues.put(will, this.trustValues.get(will)+0.05);
+					}
 				}
 			}
 		}
@@ -168,7 +167,7 @@ public class DataAgent extends AgentLearning{
 	 * Remove from the list of input available  the will
 	 * if someone has a higher priority
 	 */
-	private void cooperate() {
+	/*private void cooperate() {
 		if(this.will != null) {
 			for(DataAgent others : this.dataAgentToDiscuss) {
 				if(others.will != null) {
@@ -186,7 +185,7 @@ public class DataAgent extends AgentLearning{
 				}
 			}
 		}
-	}
+	}*/
 
 	/**
 	 * Clear the old concurrent and add all the concurrent in param
@@ -243,7 +242,7 @@ public class DataAgent extends AgentLearning{
 				this.function.rejectRequest(chosen.getAgentName(), chosen.getId());
 			}
 		}
-		
+
 		if(chosen != null) {
 			if(chosen instanceof RequestColumn) {
 				this.treatRequestColumn((RequestColumn) chosen);
@@ -254,7 +253,7 @@ public class DataAgent extends AgentLearning{
 		}
 		this.mailbox.clear();
 	}
-	
+
 	private void treatRequestColumn(RequestColumn request) {
 		if(request.getCriticality() > this.criticality) {
 			double minTrust = 10.0;
@@ -272,7 +271,7 @@ public class DataAgent extends AgentLearning{
 		else {
 			this.function.rejectRequest(request.getAgentName(),request.getId());
 		}
-		
+
 	}
 
 
@@ -314,20 +313,24 @@ public class DataAgent extends AgentLearning{
 	@Override
 	public void requestAccepted(int id) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void requestDenied(int id) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	public void updateTrust(double feedback2) {
 		// TODO Auto-generated method stub
-		
+
 	}
-	
-	
+
+	public Set<String> getWhatInputIAplied(){
+		return this.inputsAvailable;
+	}
+
+
 
 }
