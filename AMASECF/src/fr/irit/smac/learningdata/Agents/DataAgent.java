@@ -51,6 +51,7 @@ public class DataAgent extends AgentLearning{
 	private void init() {
 		this.value = 0.0;
 		this.feedback = 0.0;
+		this.criticality = 0.0;
 		this.trustValues = new TreeMap<String,Double>();
 		this.dataAgentToDiscuss = new ArrayList<DataAgent>();
 		this.namesOfConcurrent = new ArrayList<String>();
@@ -106,6 +107,7 @@ public class DataAgent extends AgentLearning{
 	 */
 	public void clearInput() {
 		this.inputsAvailable.clear();
+		this.inputChosen.clear();
 	}
 
 	/**
@@ -113,7 +115,6 @@ public class DataAgent extends AgentLearning{
 	 */
 	public void perceive() {
 		this.dataAgentToDiscuss.clear();
-		this.inputChosen.clear();
 		for(String nameOfData : this.namesOfConcurrent) {
 			this.dataAgentToDiscuss.add(this.function.getDataAgentWithName(nameOfData));
 		}
@@ -130,11 +131,10 @@ public class DataAgent extends AgentLearning{
 
 		treatRequest();
 
-		if(this.id == 1) {
-			System.out.println(this.toString() + " Choice : "+this.inputsAvailable );
-		}
+		System.out.println("INPUTSCVHOSEN : "+this.inputChosen);
+		
 
-		this.function.informDecision(this,this.inputsAvailable);
+		//this.function.informDecision(this,this.inputChosen);
 
 	}
 
@@ -235,11 +235,14 @@ public class DataAgent extends AgentLearning{
 		Request chosen = null;
 		for(Request request : this.mailbox) {
 			if(request.getCriticality() > maxCrit) {
-				this.function.rejectRequest(chosen.getAgentName(), chosen.getId());
+				if(chosen != null) {
+					this.function.rejectRequest(chosen.getAgentName(), chosen.getId());
+				}
 				chosen = request;
+				maxCrit = chosen.getCriticality();
 			}
 			else {
-				this.function.rejectRequest(chosen.getAgentName(), chosen.getId());
+				this.function.rejectRequest(request.getAgentName(), request.getId());
 			}
 		}
 
@@ -277,8 +280,25 @@ public class DataAgent extends AgentLearning{
 
 	private void treatRequestRow(RequestRow request) {
 		if(request.getCriticality() > this.criticality) {
-			this.inputsAvailable.remove(request.getInputName());
-			this.function.acceptRequest(request.getAgentName(), request.getId());
+			switch(request.getReason()) {
+			case OVERCHARGED:
+				this.inputChosen.remove(request.getInputName());
+				this.function.acceptRequest(request.getAgentName(), request.getId());
+				break;
+			case UNDERCHARGED:
+				double maxTrust = 0.0;
+				for(String s : this.inputsAvailable) {
+					if(this.trustValues.get(s)>maxTrust) {
+						maxTrust = this.trustValues.get(s);
+					}
+				}
+				if(maxTrust < this.trustValues.get(request.getInputName())){
+					this.inputChosen.add(request.getInputName());
+				}
+				break;
+				default:
+				break;
+			}
 		}
 	}
 
@@ -322,8 +342,28 @@ public class DataAgent extends AgentLearning{
 
 	}
 
-	public void updateTrust(double feedback2) {
-		// TODO Auto-generated method stub
+	public void updateTrust(double feedback) {
+		for(String will : this.inputsAvailable) {
+			int sizeHistory = this.function.getHistoryFeedback().size();
+			if(sizeHistory > 1) {
+				if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
+					this.trustValues.put(will, this.trustValues.get(will)-0.01);
+				}
+				else {
+					this.trustValues.put(will, this.trustValues.get(will)+0.05);
+				}
+			}
+			if(sizeHistory > 2) {
+				if(function.getHistoryFeedback().get(sizeHistory-1) > function.getHistoryFeedback().get(sizeHistory-2)) {
+					this.trustValues.put(will, this.trustValues.get(will)-0.05);
+				}
+				else {
+					if(!function.getHistoryFeedback().get(sizeHistory-1).equals(function.getHistoryFeedback().get(sizeHistory-2))) {
+						this.trustValues.put(will, this.trustValues.get(will)+0.05);
+					}
+				}
+			}
+		}
 
 	}
 

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,8 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	private int nbDataAgent = 0;
 
+	private boolean constraintRespected;
+
 
 	public LearningFunction(AmasLearning amas, Object[] params, String name, SyntheticFunction function) {
 		super(amas, params);
@@ -55,15 +58,14 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private void init() {
 		this.allDataAgent = new TreeMap<String,DataAgent>();
 		this.allInputAgent = new TreeMap<String,InputAgent>();
-		this.allColumnAgent = new TreeMap<DataAgent, ColumnAgent>();
-		this.allRowAgent = new TreeMap<InputAgent, RowAgent>();
+		this.allColumnAgent = new HashMap<DataAgent, ColumnAgent>();
+		this.allRowAgent = new HashMap<InputAgent, RowAgent>();
 		this.historyFeedback = new ArrayList<Double>();
 		this.allAgents = new TreeMap<String,AgentLearning>();
 		this.feedback = 0.0;
 
 		for(Integer i : this.function.getInputIDRemoved()) {
 			this.createInputAgent("Input:"+i, i);
-			this.createRowAgent("Row"+i,this.allInputAgent.get("Input"+i));
 		}
 	}
 
@@ -78,9 +80,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		System.out.println("NB DATA : "+this.nbDataAgent);
 		this.valueOfOperand = new ArrayDeque<Double>();
 		this.variableInEnvironment = new TreeSet<String>();
-		
+
 		// Update the influence and the trust
-		
+
 
 	}
 
@@ -103,13 +105,14 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(String s : dataAgentToCreate) {
 			this.createDataAgent(s);
 		}
-		
+
 
 		// Give the feedback to the input agent
 		for(InputAgent inputAgent : this.allInputAgent.values()) {
 			inputAgent.updateInfluence(this.feedback);
+			inputAgent.clearApplying();
 		}
-		
+
 
 		// Give the feedback of the function to all dataAgent
 		for(DataAgent dataAgent : this.allDataAgent.values()) {
@@ -125,28 +128,41 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 */
 	@Override
 	protected void onDecide() {
+		System.out.println("START DECIDE");
+		int cycleDecide = 0;
+		this.constraintRespected = false;
+		while(!this.constraintRespected) {
+			this.constraintRespected = true;
+			//Row Agent
+			this.startRowAgent();
 
-		//Row Agent
-		this.startRowAgent();
+			//ColumnAgent
+			this.startColumnAgent();
 
-		//ColumnAgent
-		this.startColumnAgent();
+			// InputAgent
+			this.startInputAgent();
 
-		// InputAgent
-		this.startInputAgent();
+			// DataAgent
+			this.startDataAgent();
 
-		// DataAgent
-		this.startDataAgent();
-
-		for(DataAgent dataAgent : this.allDataAgent.values()) {
-			for(String will : dataAgent.getInputChosen()) {
-				this.allInputAgent.get(will).setDataAgent(dataAgent);
+			for(DataAgent dataAgent : this.allDataAgent.values()) {
+				for(String will : dataAgent.getInputChosen()) {
+					this.allInputAgent.get(will).addDataAgent(dataAgent);
+				}
+			}
+			cycleDecide++;
+			for(RowAgent rowAgent : this.allRowAgent.values()) {
+				System.out.println(""+rowAgent.getInput().getName() + rowAgent.getDataApplying());
+			}
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
+		System.out.println("END DECIDE : "+cycleDecide);
 
-		for(InputAgent inputAgent : this.allInputAgent.values()) {
-			this.function.setOperandOfInput(inputAgent.getId(),inputAgent.getCurrentData().getName());
-		}
 	}
 
 
@@ -160,6 +176,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 		for(RowAgent rowAgent : rowAgentRemaining) {
 			rowAgent.perceive();
+		}
+		Collections.shuffle(rowAgentRemaining);
+		for(RowAgent rowAgent : rowAgentRemaining) {
 			rowAgent.decideAndAct();
 		}
 	}
@@ -174,6 +193,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 		for(ColumnAgent columnAgent : columnAgentRemaining) {
 			columnAgent.perceive();
+		}
+		Collections.shuffle(columnAgentRemaining);
+		for(ColumnAgent columnAgent : columnAgentRemaining) {
 			columnAgent.decideAndAct();
 		}
 	}
@@ -211,11 +233,11 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(String nameOfInput: this.allInputAgent.keySet()) {
 			acquisition.put(nameOfInput, new ArrayList<String>());
 		}
-		
+
 		for(List<String> list :acquisition.values()) {
 			list.clear();
 		}
-		
+
 		List<DataAgent> dataAgentRemaining = new ArrayList<DataAgent>(this.allDataAgent.values());
 		Collections.shuffle(dataAgentRemaining);
 
@@ -240,12 +262,16 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 				}
 			}
 		}
-		System.out.println(acquisition);
+		//System.out.println(acquisition);
 
 	}
 
 	@Override
 	protected void onAct() {
+		for(InputAgent inputAgent : this.allInputAgent.values()) {
+			this.function.setOperandOfInput(inputAgent.getId(),inputAgent.getCurrentData().getName());
+		}
+
 		double result = this.function.computeInput();
 		this.feedback = result - this.getAmas().getResultOracle(this.name);
 		/*for(DataAgent dataAgent : this.allDataAgent.values()) {
@@ -283,9 +309,10 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(RowAgent rowAgent: this.allRowAgent.values()) {
 			rowAgent.addDataAgent(dag);
 		}
+		
+		this.createColumnAgent("Column"+name,dag,this.allInputAgent.values());
 		return true;
 	}
-
 	/**
 	 * Create an input Agent 
 	 * @param name
@@ -298,6 +325,8 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		InputAgent inag = new InputAgent(name,this, id);
 		this.allInputAgent.put(inag.getName(), inag);
 		this.allAgents.put(inag.getName(), inag);
+		
+		this.createRowAgent(name, inag);
 		return true;
 	}
 
@@ -310,6 +339,13 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.allAgents.put(name, rowAgent);
 		return true;
 	}
+	
+	private void createColumnAgent(String name, DataAgent dag, Collection<InputAgent> inputs) {
+		ColumnAgent columnAgent = new ColumnAgent(name,dag,inputs,this);
+		this.allColumnAgent.put(dag, columnAgent);
+		this.allAgents.put(name, columnAgent);
+	}
+
 
 	/**
 	 * Set the function
@@ -391,5 +427,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	public void rejectRequest(String agentName, int id) {
 		this.allAgents.get(agentName).requestDenied(id);
 
+	}
+	
+	public void constraintNotRespected() {
+		this.constraintRespected = false;
 	}
 }

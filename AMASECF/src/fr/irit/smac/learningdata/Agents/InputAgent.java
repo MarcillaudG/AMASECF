@@ -19,9 +19,9 @@ public class InputAgent extends AgentLearning{
 
 	private DataAgent currentData;
 
-	private double lastValue;
-
 	private DataAgent lastData;
+	
+	private List<String> dataAgentApplying;
 
 	private double lastFeedback;
 
@@ -50,6 +50,7 @@ public class InputAgent extends AgentLearning{
 		this.feedback = 0.0;
 		this.historyValues = new ArrayList<Double>();
 		this.support = new PropertyChangeSupport(this);
+		this.dataAgentApplying = new ArrayList<String>();
 
 		// Init influences
 		this.influences = new HashMap<Operator,Double>();
@@ -67,6 +68,17 @@ public class InputAgent extends AgentLearning{
 		return this.currentData;
 	}
 
+	public List<String> getDataAgentApplying(){
+		return new ArrayList<String>(this.dataAgentApplying);
+	}
+	
+	public void addDataAgent(String dataAgent) {
+		this.dataAgentApplying.add(dataAgent);
+	}
+	
+	public void clearApplying() {
+		this.dataAgentApplying.clear();
+	}
 
 	public void perceive() {
 		if(this.currentData != null) {
@@ -200,6 +212,12 @@ public class InputAgent extends AgentLearning{
 	}
 
 	@Override
+	public String toString() {
+		return "InputAgent [name=" + name + ", id=" + id + ", currentData=" + currentData + ", influences=" + influences
+				+ "]";
+	}
+
+	@Override
 	public void requestAccepted(int id) {
 		// TODO Auto-generated method stub
 		
@@ -212,6 +230,11 @@ public class InputAgent extends AgentLearning{
 	}
 
 	public void updateInfluence(double feedback) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void addDataAgent(DataAgent dataAgent) {
 		// TODO Auto-generated method stub
 		
 	}

@@ -5,10 +5,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.learningdata.requests.RequestColumn;
 import fr.irit.smac.learningdata.requests.RequestRow;
+import fr.irit.smac.learningdata.requests.RequestRow.Reason;
 
 public class RowAgent extends AgentLearning{
 
@@ -22,7 +24,9 @@ public class RowAgent extends AgentLearning{
 
 	private String name;
 
-	private Map<DataAgent,Integer> row;
+	private Reason reason;
+
+	private Map<String,Integer> row;
 
 	private Map<Integer,RequestRow> waitingRequest;
 
@@ -35,7 +39,7 @@ public class RowAgent extends AgentLearning{
 		this.function = function;
 		this.idRequest = 0;
 
-		this.row = new HashMap<DataAgent,Integer>();
+		this.row = new HashMap<String,Integer>();
 		this.waitingRequest = new TreeMap<Integer,RequestRow>();
 
 	}
@@ -48,22 +52,36 @@ public class RowAgent extends AgentLearning{
 		return input;
 	}
 
-	public Set<DataAgent> getDataAgents() {
+	public Set<String> getDataAgents() {
 		return row.keySet();
 	}
 
+	public Map<String,Integer> getRow(){
+		return this.row ;
+	}
+	
+	public Set<String> getDataApplying(){
+		Set<String> ret = new TreeSet<String>();
+		for(String name : this.row.keySet()) {
+			if(this.row.get(name) == 1) {
+				ret.add(name);
+			}
+		}
+		return ret;
+	}
+	
 	public String getName() {
 		return name;
 	}
 
 	public void perceive() {
-		for(DataAgent dataAgent: this.row.keySet()) {
+		
+		for(String name: this.row.keySet()) {
+			this.row.put(name, 0);
+			DataAgent dataAgent = this.function.getDataAgentWithName(name);
 			for(String will : dataAgent.getInputChosen()) {
 				if(will.equals(this.input.getName())) {
-					this.row.put(dataAgent, 1);
-				}
-				else {
-					this.row.put(dataAgent,0);
+					this.row.put(name, 1);
 				}
 			}
 		}
@@ -71,26 +89,36 @@ public class RowAgent extends AgentLearning{
 
 	public void decideAndAct() {
 		int sum = 0;
-		for(DataAgent dataAgent: this.row.keySet()) {
-			if(this.row.get(dataAgent) == 1) {
+		for(String name: this.row.keySet()) {
+			if(this.row.get(name) == 1) {
 				sum += 1;
 			}
 		}
 		if(sum == 0 ) {
 			this.criticality = RowAgent.CRITICALITY_EMPTY;
+			this.reason = Reason.UNDERCHARGED;
 		}
 		else {
-			this.criticality = sum > 1 ? Math.pow(sum,2) : 0.0;
+			if(sum > 1) {
+				this.criticality = Math.pow(sum,2);
+				this.reason = Reason.OVERCHARGED;
+				System.out.println("CRIT : "+this.criticality);
+			}
+			else {
+				this.criticality = 0.0;
+			}
+
 		}
 
 		if(this.criticality > 0) {
 			this.searchForService();
+			this.function.constraintNotRespected();
 		}
 	}
 
 	public void onCycleBegin() {
-		for(DataAgent dataAgent : this.row.keySet()) {
-			this.row.put(dataAgent, 0);
+		for(String name: this.row.keySet()) {
+			this.row.put(name, 0);
 		}
 	}
 
@@ -98,11 +126,25 @@ public class RowAgent extends AgentLearning{
 	 * Request the data agent
 	 */
 	private void searchForService() {
-		for(DataAgent dataAgent : this.row.keySet()) {
-			if(this.row.get(dataAgent) == 1) {
-				Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName());
-				dataAgent.sendRequest(request);
+		switch(this.reason) {
+		case OVERCHARGED:
+			for(String name: this.row.keySet()) {
+				if(this.row.get(name) == 1) {
+					Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.OVERCHARGED);
+					this.function.getDataAgentWithName(name).sendRequest(request);
+				}
 			}
+			break;
+		case UNDERCHARGED:
+			for(String name: this.row.keySet()) {
+				Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.UNDERCHARGED);
+				this.function.getDataAgentWithName(name).sendRequest(request);
+
+			}
+			break;
+		default:
+			break;
+
 		}
 	}
 
@@ -119,11 +161,11 @@ public class RowAgent extends AgentLearning{
 	 * Add a new DataAgent
 	 */
 	public void addDataAgent(DataAgent dataAgent) {
-		this.row.put(dataAgent, 0);
+		this.row.put(dataAgent.getName(), 0);
 	}
 
 	public void dataAgentApplying(DataAgent dataAgent) {
-		this.row.put(dataAgent, 1);
+		this.row.put(dataAgent.getName(), 1);
 	}
 
 	@Override

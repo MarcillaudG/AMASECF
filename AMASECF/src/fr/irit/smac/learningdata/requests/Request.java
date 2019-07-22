@@ -37,6 +37,11 @@ public abstract class Request {
 	public void setId(int id) {
 		this.id = id;
 	}
+
+	@Override
+	public String toString() {
+		return "Request [criticality=" + criticality + ", agentName=" + agentName + ", id=" + id + "]";
+	}
 	
 	
 }
