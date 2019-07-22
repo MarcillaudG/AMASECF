@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import fr.irit.smac.learningdata.requests.Offer;
 import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.learningdata.requests.RequestColumn;
 import fr.irit.smac.learningdata.requests.RequestRow;
@@ -282,8 +283,9 @@ public class DataAgent extends AgentLearning{
 		if(request.getCriticality() > this.criticality) {
 			switch(request.getReason()) {
 			case OVERCHARGED:
-				this.inputChosen.remove(request.getInputName());
-				this.function.acceptRequest(request.getAgentName(), request.getId());
+				//this.inputChosen.remove(request.getInputName());
+				//this.function.acceptRequest(request.getAgentName(), request.getId());
+				this.function.applyForRequest(request, new Offer(this.name,this.trustValues.get(request.getInputName())));
 				break;
 			case UNDERCHARGED:
 				double maxTrust = 0.0;
@@ -293,7 +295,8 @@ public class DataAgent extends AgentLearning{
 					}
 				}
 				if(maxTrust < this.trustValues.get(request.getInputName())){
-					this.inputChosen.add(request.getInputName());
+					//this.inputChosen.add(request.getInputName());
+					this.function.applyForRequest(request, new Offer(this.name,this.trustValues.get(request.getInputName())));
 				}
 				break;
 				default:
@@ -369,6 +372,27 @@ public class DataAgent extends AgentLearning{
 
 	public Set<String> getWhatInputIAplied(){
 		return this.inputsAvailable;
+	}
+
+	public void applyWinRequest(Request request) {
+		if(request instanceof RequestRow) {
+			switch(((RequestRow) request).getReason()) {
+			case OVERCHARGED:
+				this.inputChosen.remove(((RequestRow) request).getInputName());
+				this.function.acceptRequest(request.getAgentName(), request.getId());
+				break;
+			case UNDERCHARGED:
+				this.inputChosen.add(((RequestRow) request).getInputName());
+				this.function.acceptRequest(request.getAgentName(), request.getId());
+				break;
+			default:
+				break;
+			
+			}
+		}else {
+			
+		}
+		
 	}
 
 

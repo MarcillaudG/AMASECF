@@ -17,6 +17,8 @@ import java.util.TreeSet;
 import fr.irit.smac.amak.Agent;
 import fr.irit.smac.learningdata.AmasLearning;
 import fr.irit.smac.learningdata.EnvironmentLearning;
+import fr.irit.smac.learningdata.requests.Offer;
+import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.modelui.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
 
@@ -40,6 +42,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	private Map<String,AgentLearning> allAgents;
 
+	private Map<Request,List<Offer>> auctions;
+
+
 	private String name;
 	private double feedback;
 
@@ -62,6 +67,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.allRowAgent = new HashMap<InputAgent, RowAgent>();
 		this.historyFeedback = new ArrayList<Double>();
 		this.allAgents = new TreeMap<String,AgentLearning>();
+		this.auctions = new HashMap<Request,List<Offer>>();
 		this.feedback = 0.0;
 
 		for(Integer i : this.function.getInputIDRemoved()) {
@@ -144,6 +150,8 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 			// DataAgent
 			this.startDataAgent();
+
+			this.manageAuctions();
 
 			for(DataAgent dataAgent : this.allDataAgent.values()) {
 				for(String will : dataAgent.getInputChosen()) {
@@ -309,7 +317,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(RowAgent rowAgent: this.allRowAgent.values()) {
 			rowAgent.addDataAgent(dag);
 		}
-		
+
 		this.createColumnAgent("Column"+name,dag,this.allInputAgent.values());
 		return true;
 	}
@@ -325,7 +333,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		InputAgent inag = new InputAgent(name,this, id);
 		this.allInputAgent.put(inag.getName(), inag);
 		this.allAgents.put(inag.getName(), inag);
-		
+
 		this.createRowAgent(name, inag);
 		return true;
 	}
@@ -339,7 +347,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.allAgents.put(name, rowAgent);
 		return true;
 	}
-	
+
 	private void createColumnAgent(String name, DataAgent dag, Collection<InputAgent> inputs) {
 		ColumnAgent columnAgent = new ColumnAgent(name,dag,inputs,this);
 		this.allColumnAgent.put(dag, columnAgent);
@@ -428,8 +436,49 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.allAgents.get(agentName).requestDenied(id);
 
 	}
-	
+
 	public void constraintNotRespected() {
 		this.constraintRespected = false;
+	}
+
+
+	/**
+	 * Manage the auction to give one to an agent
+	 */
+	private void manageAuctions() {
+		for(Request request : this.auctions.keySet()) {
+			double maxOffer = 0.0;
+			DataAgent agent = null;
+			for(Offer offer : this.auctions.get(request)) {
+				if(offer.getOffer() > maxOffer) {
+					maxOffer = offer.getOffer();
+					agent = this.getDataAgentWithName(offer.getNameOfAgent());
+				}
+			}
+			if(agent != null) {
+				agent.applyWinRequest(request);
+			}
+			else {
+				this.getRowAgentWithName(request.getAgentName()).requestDenied(request.getId());
+			}
+		}
+		this.auctions.clear();
+	}
+
+	/**
+	 * 
+	 * @param request
+	 * @param offer
+	 */
+	public void applyForRequest(Request request, Offer offer) {
+		this.auctions.get(request).add(offer);
+	}
+
+	public void proposeRequest(Request request) {
+		this.auctions.put(request, new ArrayList<Offer>());
+		for(DataAgent dataAgent : this.allDataAgent.values()) {
+			dataAgent.sendRequest(request);
+		}
+
 	}
 }

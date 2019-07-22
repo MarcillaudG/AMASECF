@@ -102,7 +102,6 @@ public class RowAgent extends AgentLearning{
 			if(sum > 1) {
 				this.criticality = Math.pow(sum,2);
 				this.reason = Reason.OVERCHARGED;
-				System.out.println("CRIT : "+this.criticality);
 			}
 			else {
 				this.criticality = 0.0;
@@ -131,14 +130,16 @@ public class RowAgent extends AgentLearning{
 			for(String name: this.row.keySet()) {
 				if(this.row.get(name) == 1) {
 					Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.OVERCHARGED);
-					this.function.getDataAgentWithName(name).sendRequest(request);
+					//this.function.getDataAgentWithName(name).sendRequest(request);
+					this.function.proposeRequest(request);
 				}
 			}
 			break;
 		case UNDERCHARGED:
 			for(String name: this.row.keySet()) {
 				Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.UNDERCHARGED);
-				this.function.getDataAgentWithName(name).sendRequest(request);
+				//this.function.getDataAgentWithName(name).sendRequest(request);
+				this.function.proposeRequest(request);
 
 			}
 			break;
