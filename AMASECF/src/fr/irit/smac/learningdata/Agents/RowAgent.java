@@ -59,7 +59,7 @@ public class RowAgent extends AgentLearning{
 	public Map<String,Integer> getRow(){
 		return this.row ;
 	}
-	
+
 	public Set<String> getDataApplying(){
 		Set<String> ret = new TreeSet<String>();
 		for(String name : this.row.keySet()) {
@@ -69,21 +69,18 @@ public class RowAgent extends AgentLearning{
 		}
 		return ret;
 	}
-	
+
 	public String getName() {
 		return name;
 	}
 
 	public void perceive() {
-		
+
 		for(String name: this.row.keySet()) {
 			this.row.put(name, 0);
 			DataAgent dataAgent = this.function.getDataAgentWithName(name);
-			for(String will : dataAgent.getInputChosen()) {
-				if(will.equals(this.input.getName())) {
-					this.row.put(name, 1);
-				}
-			}
+			if(dataAgent.getInputChosen().contains(this.input.getName()))
+				this.row.put(name, 1);
 		}
 	}
 
@@ -110,6 +107,7 @@ public class RowAgent extends AgentLearning{
 		}
 
 		if(this.criticality > 0) {
+			//System.out.println("ROWAGENT : "+this.getName()+" "+this.criticality);
 			this.searchForService();
 			this.function.constraintNotRespected();
 		}
@@ -127,21 +125,25 @@ public class RowAgent extends AgentLearning{
 	private void searchForService() {
 		switch(this.reason) {
 		case OVERCHARGED:
-			for(String name: this.row.keySet()) {
+			/*for(String name: this.row.keySet()) {
 				if(this.row.get(name) == 1) {
 					Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.OVERCHARGED);
 					//this.function.getDataAgentWithName(name).sendRequest(request);
 					this.function.proposeRequest(request);
 				}
-			}
+			}*/
+			Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.OVERCHARGED);
+			this.function.proposeRequest(request);
 			break;
 		case UNDERCHARGED:
-			for(String name: this.row.keySet()) {
+			/*for(String name: this.row.keySet()) {
 				Request request = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.UNDERCHARGED);
 				//this.function.getDataAgentWithName(name).sendRequest(request);
 				this.function.proposeRequest(request);
 
-			}
+			}*/
+			Request request2 = new RequestRow(this.criticality, this.name, this.idRequest++, this.input.getName(), Reason.UNDERCHARGED);
+			this.function.proposeRequest(request2);
 			break;
 		default:
 			break;
@@ -171,7 +173,6 @@ public class RowAgent extends AgentLearning{
 
 	@Override
 	public void requestAccepted(int id) {
-		// TODO Auto-generated method stub
 
 	}
 

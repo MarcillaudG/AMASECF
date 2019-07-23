@@ -142,8 +142,6 @@ public class InputAgent extends AgentLearning{
 	public void decideAndAct() {
 		if(this.lastData != null) {
 			computeInfluence();
-			this.support.firePropertyChange("INFLUENCE ADD", null, this.influences.get(Operator.PLUS));
-			this.support.firePropertyChange("INFLUENCE MINUS", null, this.influences.get(Operator.MOINS));
 		}
 
 	}
@@ -237,6 +235,13 @@ public class InputAgent extends AgentLearning{
 	public void addDataAgent(DataAgent dataAgent) {
 		// TODO Auto-generated method stub
 		
+	}
+	
+	public void fireAllProperty() {
+		this.support.firePropertyChange("INFLUENCE ADD", null, this.influences.get(Operator.PLUS));
+		this.support.firePropertyChange("INFLUENCE MINUS", null, this.influences.get(Operator.MOINS));
+		List<String> dataApplying = new ArrayList<String>(this.function.getAllDataAgentApplyingForInput(this.name));
+		this.support.firePropertyChange("DATA", "", dataApplying);
 	}
 	
 	

@@ -39,11 +39,12 @@ public class ColumnAgent extends AgentLearning{
 	
 	public void perceive() {
 		int somme = 0;
-		for(InputAgent inputAgent : this.column) {
+		/*for(InputAgent inputAgent : this.column) {
 			if(this.dataAgent.getInputChosen().contains(inputAgent.getName())) {
 				somme += 1;
 			}
-		}
+		}*/
+		somme = this.dataAgent.getInputChosen().size();
 		this.criticality = somme > 1 ? Math.pow(somme,2) : 0.0;
 	}
 	
@@ -52,9 +53,9 @@ public class ColumnAgent extends AgentLearning{
 			this.criticality = Math.pow(this.criticality, 2);
 		}
 		if(this.criticality > 0 ) {
-			System.out.println("COLONNE");
 			searchForService();
 			this.function.constraintNotRespected();
+			System.out.println("DATA : "+this.dataAgent.getName()+" CRIT  "+this.criticality);
 		}
 	}
 

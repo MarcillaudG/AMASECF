@@ -1,6 +1,7 @@
 package fr.irit.smac.learningdata.Agents;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +34,8 @@ public class DataAgent extends AgentLearning{
 
 	private Set<String> inputsAvailable;
 
+	private Set<String> inputRefused;
+
 	private static double INIT_VALUE = 0.5;
 
 	private List<Request> mailbox;
@@ -60,6 +63,7 @@ public class DataAgent extends AgentLearning{
 		this.inputsAvailable = new TreeSet<String>();
 		this.inputChosen = new TreeSet<String>();
 		this.mailbox = new ArrayList<Request>();
+		this.inputRefused = new TreeSet<String>();
 	}
 
 	public void addNewInputAgent(String name) {
@@ -109,6 +113,7 @@ public class DataAgent extends AgentLearning{
 	public void clearInput() {
 		this.inputsAvailable.clear();
 		this.inputChosen.clear();
+		this.inputRefused.clear();
 	}
 
 	/**
@@ -132,8 +137,7 @@ public class DataAgent extends AgentLearning{
 
 		treatRequest();
 
-		System.out.println("INPUTSCVHOSEN : "+this.inputChosen);
-		
+
 
 		//this.function.informDecision(this,this.inputChosen);
 
@@ -234,6 +238,7 @@ public class DataAgent extends AgentLearning{
 	private void treatRequest() {
 		double maxCrit = 0.0;
 		Request chosen = null;
+		Collections.shuffle(mailbox);
 		for(Request request : this.mailbox) {
 			if(request.getCriticality() > maxCrit) {
 				if(chosen != null) {
@@ -262,15 +267,16 @@ public class DataAgent extends AgentLearning{
 		if(request.getCriticality() > this.criticality) {
 			double minTrust = 10.0;
 			String inputToRemove = "";
-			for(String s : this.trustValues.keySet()) {
+			for(String s : this.inputChosen) {
 				Double d = this.trustValues.get(s);
 				if(d < minTrust) {
 					minTrust = d;
 					inputToRemove = s;
 				}
 			}
-			this.inputsAvailable.remove(inputToRemove);
+			this.inputChosen.remove(inputToRemove);
 			this.function.acceptRequest(request.getAgentName(),request.getId());
+			this.inputRefused.add(inputToRemove);
 		}
 		else {
 			this.function.rejectRequest(request.getAgentName(),request.getId());
@@ -285,21 +291,23 @@ public class DataAgent extends AgentLearning{
 			case OVERCHARGED:
 				//this.inputChosen.remove(request.getInputName());
 				//this.function.acceptRequest(request.getAgentName(), request.getId());
-				this.function.applyForRequest(request, new Offer(this.name,this.trustValues.get(request.getInputName())));
+				this.function.applyForRequest(request, new Offer(this.name,1-this.trustValues.get(request.getInputName())));
 				break;
 			case UNDERCHARGED:
-				double maxTrust = 0.0;
-				for(String s : this.inputsAvailable) {
-					if(this.trustValues.get(s)>maxTrust) {
-						maxTrust = this.trustValues.get(s);
+				if(!this.inputRefused.contains(request.getInputName())){
+					double maxTrust = 0.0;
+					for(String s : this.inputChosen) {
+						if(this.trustValues.get(s)>maxTrust) {
+							maxTrust = this.trustValues.get(s);
+						}
+					}
+					if(maxTrust < this.trustValues.get(request.getInputName())){
+						//this.inputChosen.add(request.getInputName());
+						this.function.applyForRequest(request, new Offer(this.name,this.trustValues.get(request.getInputName())));
 					}
 				}
-				if(maxTrust < this.trustValues.get(request.getInputName())){
-					//this.inputChosen.add(request.getInputName());
-					this.function.applyForRequest(request, new Offer(this.name,this.trustValues.get(request.getInputName())));
-				}
 				break;
-				default:
+			default:
 				break;
 			}
 		}
@@ -346,7 +354,7 @@ public class DataAgent extends AgentLearning{
 	}
 
 	public void updateTrust(double feedback) {
-		for(String will : this.inputsAvailable) {
+		for(String will : this.inputChosen) {
 			int sizeHistory = this.function.getHistoryFeedback().size();
 			if(sizeHistory > 1) {
 				if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
@@ -379,7 +387,9 @@ public class DataAgent extends AgentLearning{
 			switch(((RequestRow) request).getReason()) {
 			case OVERCHARGED:
 				this.inputChosen.remove(((RequestRow) request).getInputName());
+				this.inputRefused.add(((RequestRow) request).getInputName());
 				this.function.acceptRequest(request.getAgentName(), request.getId());
+				System.out.println("ME :" + this.getName() + " "+ request);
 				break;
 			case UNDERCHARGED:
 				this.inputChosen.add(((RequestRow) request).getInputName());
@@ -387,12 +397,12 @@ public class DataAgent extends AgentLearning{
 				break;
 			default:
 				break;
-			
+
 			}
 		}else {
-			
+
 		}
-		
+
 	}
 
 

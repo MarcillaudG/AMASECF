@@ -139,15 +139,19 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.constraintRespected = false;
 		while(!this.constraintRespected) {
 			this.constraintRespected = true;
+			System.out.println("ROW");
 			//Row Agent
 			this.startRowAgent();
 
+			System.out.println("Column");
 			//ColumnAgent
 			this.startColumnAgent();
 
+			System.out.println("Input");
 			// InputAgent
 			this.startInputAgent();
 
+			System.out.println("Data");
 			// DataAgent
 			this.startDataAgent();
 
@@ -159,18 +163,17 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 				}
 			}
 			cycleDecide++;
-			for(RowAgent rowAgent : this.allRowAgent.values()) {
-				System.out.println(""+rowAgent.getInput().getName() + rowAgent.getDataApplying());
+			for(InputAgent input : this.allInputAgent.values()) {
+				input.fireAllProperty();
 			}
 			try {
-				Thread.sleep(3000);
+				Thread.sleep(0);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 		System.out.println("END DECIDE : "+cycleDecide);
-
 	}
 
 
@@ -276,8 +279,10 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	@Override
 	protected void onAct() {
-		for(InputAgent inputAgent : this.allInputAgent.values()) {
-			this.function.setOperandOfInput(inputAgent.getId(),inputAgent.getCurrentData().getName());
+		for(DataAgent dataAgent : this.allDataAgent.values()) {
+			for(String input : dataAgent.getInputChosen()) {
+				this.function.setOperandOfInput(this.allInputAgent.get(input).getId(), dataAgent.getName());
+			}
 		}
 
 		double result = this.function.computeInput();
@@ -449,6 +454,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(Request request : this.auctions.keySet()) {
 			double maxOffer = 0.0;
 			DataAgent agent = null;
+			Collections.shuffle(this.auctions.get(request));
 			for(Offer offer : this.auctions.get(request)) {
 				if(offer.getOffer() > maxOffer) {
 					maxOffer = offer.getOffer();
@@ -457,6 +463,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			}
 			if(agent != null) {
 				agent.applyWinRequest(request);
+				this.getRowAgentWithName(request.getAgentName()).requestAccepted(request.getId());
 			}
 			else {
 				this.getRowAgentWithName(request.getAgentName()).requestDenied(request.getId());
@@ -480,5 +487,15 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			dataAgent.sendRequest(request);
 		}
 
+	}
+
+	public List<String> getAllDataAgentApplyingForInput(String name2) {
+		List<String> res = new ArrayList<String>();
+		for(DataAgent dataAgent : this.allDataAgent.values()) {
+			if(dataAgent.getInputChosen().contains(name2)) {
+				res.add(dataAgent.getName());
+			}
+		}
+		return res;
 	}
 }

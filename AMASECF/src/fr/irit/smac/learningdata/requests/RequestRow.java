@@ -30,6 +30,11 @@ public class RequestRow extends Request{
 		this.reason = reason;
 	}
 
+	@Override
+	public String toString() {
+		return "RequestRow [inputName=" + inputName + ", reason=" + reason + "]";
+	}
+
 	
 
 }
