@@ -19,7 +19,8 @@ import fr.irit.smac.learningdata.AmasLearning;
 import fr.irit.smac.learningdata.EnvironmentLearning;
 import fr.irit.smac.learningdata.requests.Offer;
 import fr.irit.smac.learningdata.requests.Request;
-import fr.irit.smac.modelui.InputLearningModel;
+import fr.irit.smac.modelui.learning.DataLearningModel;
+import fr.irit.smac.modelui.learning.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
 
 public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
@@ -125,6 +126,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			dataAgent.setInputAvailable(this.allInputAgent.keySet());
 			dataAgent.updateTrust(this.feedback);
 			dataAgent.clearInput();
+			dataAgent.fireTrustValues();
 		}
 
 	}
@@ -139,19 +141,15 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.constraintRespected = false;
 		while(!this.constraintRespected) {
 			this.constraintRespected = true;
-			System.out.println("ROW");
 			//Row Agent
 			this.startRowAgent();
 
-			System.out.println("Column");
 			//ColumnAgent
 			this.startColumnAgent();
 
-			System.out.println("Input");
 			// InputAgent
 			this.startInputAgent();
 
-			System.out.println("Data");
 			// DataAgent
 			this.startDataAgent();
 
@@ -397,11 +395,6 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		return this.allInputAgent.keySet();
 	}
 
-	public void addListenerToInput(String input, InputLearningModel model) {
-		this.allInputAgent.get(input).addPropertyChangeListener(model);
-
-	}
-
 
 
 	/**
@@ -498,4 +491,18 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 		return res;
 	}
+
+	public void addListenerToData(String data, DataLearningModel model) {
+		this.allDataAgent.get(data).addPropertyChangeListener(model);
+	}
+	
+	public void addListenerToInput(String input, InputLearningModel model) {
+		this.allInputAgent.get(input).addPropertyChangeListener(model);
+
+	}
+
+	public Set<String> getDatasNames() {
+		return this.allDataAgent.keySet();
+	}
+
 }

@@ -1,5 +1,6 @@
 package fr.irit.smac.learningdata.Agents;
 
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,6 +13,7 @@ import fr.irit.smac.learningdata.requests.Offer;
 import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.learningdata.requests.RequestColumn;
 import fr.irit.smac.learningdata.requests.RequestRow;
+import fr.irit.smac.modelui.learning.DataLearningModel;
 
 public class DataAgent extends AgentLearning{
 
@@ -43,6 +45,7 @@ public class DataAgent extends AgentLearning{
 	private int id;
 	private Set<String> inputChosen;
 	private double criticality;
+	private PropertyChangeSupport support;
 
 
 	public DataAgent(String name,LearningFunction function, int id) {
@@ -64,6 +67,7 @@ public class DataAgent extends AgentLearning{
 		this.inputChosen = new TreeSet<String>();
 		this.mailbox = new ArrayList<Request>();
 		this.inputRefused = new TreeSet<String>();
+		this.support = new PropertyChangeSupport(this);
 	}
 
 	public void addNewInputAgent(String name) {
@@ -358,7 +362,7 @@ public class DataAgent extends AgentLearning{
 			int sizeHistory = this.function.getHistoryFeedback().size();
 			if(sizeHistory > 1) {
 				if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
-					this.trustValues.put(will, this.trustValues.get(will)-0.01);
+					this.trustValues.put(will, this.trustValues.get(will)-0.05);
 				}
 				else {
 					this.trustValues.put(will, this.trustValues.get(will)+0.05);
@@ -389,7 +393,6 @@ public class DataAgent extends AgentLearning{
 				this.inputChosen.remove(((RequestRow) request).getInputName());
 				this.inputRefused.add(((RequestRow) request).getInputName());
 				this.function.acceptRequest(request.getAgentName(), request.getId());
-				System.out.println("ME :" + this.getName() + " "+ request);
 				break;
 			case UNDERCHARGED:
 				this.inputChosen.add(((RequestRow) request).getInputName());
@@ -403,6 +406,24 @@ public class DataAgent extends AgentLearning{
 
 		}
 
+	}
+
+	public void addPropertyChangeListener(DataLearningModel model) {
+		this.support.addPropertyChangeListener(model);
+		
+	}
+
+	public void printTrustValues() {
+		String res = "";
+		for(String s : this.trustValues.keySet()) {
+			res += "|"+s+"->"+this.trustValues.get(s);
+		}
+		System.out.println(res);
+	}
+
+	public void fireTrustValues() {
+		this.support.firePropertyChange("TRUSTVALUES", null, this.trustValues);
+		
 	}
 
 

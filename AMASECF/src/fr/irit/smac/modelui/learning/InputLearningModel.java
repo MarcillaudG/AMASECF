@@ -1,4 +1,4 @@
-package fr.irit.smac.modelui;
+package fr.irit.smac.modelui.learning;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;

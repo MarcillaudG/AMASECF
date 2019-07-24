@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import fr.irit.smac.modelui.InputLearningModel;
+import fr.irit.smac.modelui.learning.InputLearningModel;
 
 public class InputAgent extends AgentLearning{
 

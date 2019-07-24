@@ -8,7 +8,8 @@ import java.util.TreeMap;
 import fr.irit.smac.amak.Amas;
 import fr.irit.smac.amak.Scheduling;
 import fr.irit.smac.learningdata.Agents.LearningFunction;
-import fr.irit.smac.modelui.InputLearningModel;
+import fr.irit.smac.modelui.learning.DataLearningModel;
+import fr.irit.smac.modelui.learning.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
 import fr.irit.smac.shield.exceptions.TooMuchVariableToRemoveException;
 
@@ -76,6 +77,16 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 	public void addListenerToInput(String function,String input, InputLearningModel model) {
 		this.allFunctions.get(function).addListenerToInput(input,model);
 		
+	}
+
+
+	public void addListenerToData(String function, String data, DataLearningModel model) {
+		this.allFunctions.get(function).addListenerToData(data,model);		
+	}
+
+
+	public Set<String> getDatasNames(String function) {
+		return this.allFunctions.get(function).getDatasNames();
 	}
 
 }
