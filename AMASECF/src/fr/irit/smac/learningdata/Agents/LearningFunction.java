@@ -1,5 +1,9 @@
 package fr.irit.smac.learningdata.Agents;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,11 +21,20 @@ import java.util.TreeSet;
 import fr.irit.smac.amak.Agent;
 import fr.irit.smac.learningdata.AmasLearning;
 import fr.irit.smac.learningdata.EnvironmentLearning;
+import fr.irit.smac.learningdata.Agents.InputAgent.Operator;
 import fr.irit.smac.learningdata.requests.Offer;
 import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.modelui.learning.DataLearningModel;
 import fr.irit.smac.modelui.learning.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
+import links2.driver.connection.LinksConnection;
+import links2.driver.connection.LocalLinksConnection;
+import links2.driver.marshaler.Link2DriverMarshaler;
+import links2.driver.marshaler.MarshallingMode;
+import links2.driver.model.Entity;
+import links2.driver.model.Experiment;
+import links2.driver.model.Relation;
+import links2.driver.model.Snapshot;
 
 public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
@@ -44,6 +57,12 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private Map<String,AgentLearning> allAgents;
 
 	private Map<Request,List<Offer>> auctions;
+
+	private Snapshot snapshot;
+
+	private Experiment experiment;
+
+	private FileWriter file;
 
 
 	private String name;
@@ -71,6 +90,15 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.auctions = new HashMap<Request,List<Offer>>();
 		this.feedback = 0.0;
 
+		try {
+			this.file = new FileWriter(new File("C:\\\\Users\\\\gmarcill\\\\Desktop\\\\logAuctions.txt"));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		experiment = new Experiment("Variable Selection ID : TEST");
+
 		for(Integer i : this.function.getInputIDRemoved()) {
 			this.createInputAgent("Input:"+i, i);
 		}
@@ -85,9 +113,24 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 		System.out.println("Cycle : "+this.getAmas().getCycle());
 		System.out.println("NB DATA : "+this.nbDataAgent);
+		this.amas.generateNewValues();
+		try {
+			this.file.write("Cycle : " + this.getAmas().getCycle()+ "\n");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		this.valueOfOperand = new ArrayDeque<Double>();
 		this.variableInEnvironment = new TreeSet<String>();
 
+		snapshot = new Snapshot();
+		snapshot.setSnapshotNumber(this.getCycle());
+
+		for(String input : this.allInputAgent.keySet()) {
+			Entity ent = new Entity(input, "Input");
+			ent.setAttribute(Entity.ATTRIBUTE_NAME, input);
+			snapshot.addEntity(ent);
+		}
 		// Update the influence and the trust
 
 
@@ -103,7 +146,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 		// Getting the variables in the environment
 		this.variableInEnvironment.addAll(this.getAmas().getVariableInEnvironment());
-		this.variableInEnvironment.removeAll(this.function.getOperands());
+		this.variableInEnvironment.removeAll(this.function.getOperandNotRemoved());
 
 		// Creation of the data agent
 		List<String> dataAgentToCreate = new ArrayList<String>(this.variableInEnvironment);
@@ -127,6 +170,13 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			dataAgent.updateTrust(this.feedback);
 			dataAgent.clearInput();
 			dataAgent.fireTrustValues();
+			String data = dataAgent.getName();
+			Entity ent = new Entity(data, "Data");
+			ent.setAttribute(Entity.ATTRIBUTE_NAME, data);
+			for(String trust : dataAgent.getTrustValues().keySet()) {
+				ent.setAttribute(trust, dataAgent.getTrustValues().get(trust));
+			}
+			this.snapshot.addEntity(ent);
 		}
 
 	}
@@ -153,6 +203,12 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			// DataAgent
 			this.startDataAgent();
 
+			try {
+				this.file.write("BEGINING OF THE AUCTIONS : "+cycleDecide+ "\n");
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 			this.manageAuctions();
 
 			for(DataAgent dataAgent : this.allDataAgent.values()) {
@@ -171,6 +227,15 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 				e.printStackTrace();
 			}
 		}
+		for(DataAgent dataAgent : this.allDataAgent.values()) {
+			for(String will : dataAgent.getInputChosen()) {
+				this.allInputAgent.get(will).setDataAgent(dataAgent);
+				Relation r =new Relation(dataAgent.getName() + " apply to "+will, dataAgent.getName(), will, false, "Applying");
+				r.setAttribute("Trust",dataAgent.getTrustValues().get(will));
+				this.snapshot.addRelation(r);
+			}
+		}
+
 		System.out.println("END DECIDE : "+cycleDecide);
 	}
 
@@ -289,12 +354,34 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			System.out.println(dataAgent);
 			System.out.println(dataAgent.getTrustValues());
 		}*/
-		System.out.println(feedback);
+		System.out.println("RES : "+this.function.computeInput() + " FEEDBACK  :" + feedback);
 		try {
 			Thread.sleep(100);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+
+		this.experiment.addSnapshot(this.snapshot);
+
+
+		if(this.getCycle() == 100) {
+			try {
+				this.file.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			this.amas.getScheduler().stop();
+			//Helper to get connection with default parameters
+			LinksConnection connection = LocalLinksConnection.getLocalConnexion();
+
+			//Save the experiment 
+			Link2DriverMarshaler.marshalling(connection, experiment, MarshallingMode.OVERRIDE_EXP_IF_EXISTING);
+
+			//Don't forget to close the DB connection
+			connection.close();
+
 		}
 	}
 
@@ -445,21 +532,29 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 */
 	private void manageAuctions() {
 		for(Request request : this.auctions.keySet()) {
-			double maxOffer = 0.0;
-			DataAgent agent = null;
-			Collections.shuffle(this.auctions.get(request));
-			for(Offer offer : this.auctions.get(request)) {
-				if(offer.getOffer() > maxOffer) {
-					maxOffer = offer.getOffer();
-					agent = this.getDataAgentWithName(offer.getNameOfAgent());
+			try {
+				this.file.write("Request : "+request + "\n");
+				double maxOffer = 0.0;
+				DataAgent agent = null;
+				Collections.shuffle(this.auctions.get(request));
+				for(Offer offer : this.auctions.get(request)) {
+					this.file.write(offer+ "----");
+					if(offer.getOffer() > maxOffer) {
+						maxOffer = offer.getOffer();
+						agent = this.getDataAgentWithName(offer.getNameOfAgent());
+					}
 				}
-			}
-			if(agent != null) {
-				agent.applyWinRequest(request);
-				this.getRowAgentWithName(request.getAgentName()).requestAccepted(request.getId());
-			}
-			else {
-				this.getRowAgentWithName(request.getAgentName()).requestDenied(request.getId());
+				if(agent != null) {
+					agent.applyWinRequest(request);
+					this.getRowAgentWithName(request.getAgentName()).requestAccepted(request.getId());
+					this.file.write("\nWINNER : "+agent.getName()+ "\n");
+				}
+				else {
+					this.getRowAgentWithName(request.getAgentName()).requestDenied(request.getId());
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 		this.auctions.clear();
@@ -495,7 +590,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	public void addListenerToData(String data, DataLearningModel model) {
 		this.allDataAgent.get(data).addPropertyChangeListener(model);
 	}
-	
+
 	public void addListenerToInput(String input, InputLearningModel model) {
 		this.allInputAgent.get(input).addPropertyChangeListener(model);
 
@@ -504,5 +599,47 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	public Set<String> getDatasNames() {
 		return this.allDataAgent.keySet();
 	}
+
+	public String getCorrectData(int idInput) {
+		return this.amas.getNameOfCorrectDataForInput(idInput, this.name);
+	}
+
+	public double getFeedback() {
+		return this.feedback;
+	}
+
+	/**
+	 * Return the previous configuration
+	 * 
+	 * @return Map<String,String> res
+	 * 			First, the name of the input, then the name of the data
+	 */
+	public Map<String,String> getPreviousConfiguration() {
+		Map<String,String> res = new TreeMap<String,String>();
+		for(InputAgent input : this.allInputAgent.values()) {
+			res.put(input.getName(), input.getCurrentData().getName());
+		}
+		return res;
+	}
+
+	public List<DataAgent> getAllDataAgent() {
+		return new ArrayList<DataAgent>(this.allDataAgent.values());
+	}
+
+	public Operator getBestInfluenceFromInput(String name) {
+		Operator res = null;
+		Double value = -1.0;
+		Map<Operator,Double> influences = this.allInputAgent.get(name).getInfluences();
+		for(Operator ope : influences.keySet()) {
+			if(value < influences.get(ope)) {
+				value = influences.get(ope);
+				res = ope;
+			}
+		}
+		return res;
+	}
+
+
+
 
 }

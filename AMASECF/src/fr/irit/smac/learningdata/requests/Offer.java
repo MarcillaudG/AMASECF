@@ -27,6 +27,11 @@ public class Offer {
 		this.nameOfAgent = nameOfAgent;
 		this.offer = offer;
 	}
+
+	@Override
+	public String toString() {
+		return "Offer [nameOfAgent=" + nameOfAgent + ", offer=" + offer + "]";
+	}
 	
 	
 }

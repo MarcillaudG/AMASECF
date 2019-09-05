@@ -26,7 +26,8 @@ public class EnvironmentLearning extends Environment{
 	private void init() {
 		this.shieldUser = new ShieldUser();
 		
-		this.shieldUser.initSetOfTypedVariableWithRange(150, 0, 100, "Type 1");
+		this.shieldUser.initSetOfTypedVariableWithRange(100, 0, 100, "Type 1");
+		this.shieldUser.generateAllFunctionsOfVariable();
 		
 		this.shieldUser.initGeneratorOfFunction();
 		
@@ -44,6 +45,11 @@ public class EnvironmentLearning extends Environment{
 
 	public Set<String> getAllVariable() {
 		return this.shieldUser.getAllVariables();
+	}
+
+	public void generateNewValues() {
+		this.shieldUser.nextCycle();
+		
 	}
 
 	

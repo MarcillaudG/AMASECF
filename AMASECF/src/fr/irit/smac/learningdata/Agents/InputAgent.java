@@ -14,13 +14,13 @@ public class InputAgent extends AgentLearning{
 	private double influence;
 
 	private String name;
-	
+
 	private int id;
 
 	private DataAgent currentData;
 
 	private DataAgent lastData;
-	
+
 	private List<String> dataAgentApplying;
 
 	private double lastFeedback;
@@ -31,10 +31,10 @@ public class InputAgent extends AgentLearning{
 
 	private List<Double> historyValues;
 
-	private enum Operator {PLUS,MOINS};
+	public enum Operator {PLUS,MOINS};
 
 	private Map<Operator,Double> influences;
-	
+
 	private PropertyChangeSupport support;
 
 	public InputAgent(String name, LearningFunction function, int id) {
@@ -71,11 +71,11 @@ public class InputAgent extends AgentLearning{
 	public List<String> getDataAgentApplying(){
 		return new ArrayList<String>(this.dataAgentApplying);
 	}
-	
+
 	public void addDataAgent(String dataAgent) {
 		this.dataAgentApplying.add(dataAgent);
 	}
-	
+
 	public void clearApplying() {
 		this.dataAgentApplying.clear();
 	}
@@ -158,6 +158,10 @@ public class InputAgent extends AgentLearning{
 	public Double getInfluence() {
 		return this.influence;
 	}
+	
+	public Map<Operator, Double> getInfluences() {
+		return this.influences;
+	}
 
 	public void setDataAgent(DataAgent dataAgent) {
 		this.currentData = dataAgent;
@@ -174,9 +178,9 @@ public class InputAgent extends AgentLearning{
 
 	public void addPropertyChangeListener(InputLearningModel model) {
 		this.support.addPropertyChangeListener(model);
-		
+
 	}
-	
+
 	public void removePropertyChangeListener(InputLearningModel model) {
 		this.support.removePropertyChangeListener(model);
 	}
@@ -218,31 +222,31 @@ public class InputAgent extends AgentLearning{
 	@Override
 	public void requestAccepted(int id) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void requestDenied(int id) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	public void updateInfluence(double feedback) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	public void addDataAgent(DataAgent dataAgent) {
-		// TODO Auto-generated method stub
-		
+		this.currentData = dataAgent;
 	}
-	
+
 	public void fireAllProperty() {
 		this.support.firePropertyChange("INFLUENCE ADD", null, this.influences.get(Operator.PLUS));
 		this.support.firePropertyChange("INFLUENCE MINUS", null, this.influences.get(Operator.MOINS));
 		List<String> dataApplying = new ArrayList<String>(this.function.getAllDataAgentApplyingForInput(this.name));
 		this.support.firePropertyChange("DATA", "", dataApplying);
+		this.support.firePropertyChange("CORRECT", "", this.function.getCorrectData(this.id));
 	}
-	
-	
+
+
 }

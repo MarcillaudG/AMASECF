@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import fr.irit.smac.learningdata.Agents.InputAgent.Operator;
 import fr.irit.smac.learningdata.requests.Offer;
 import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.learningdata.requests.RequestColumn;
@@ -241,29 +242,34 @@ public class DataAgent extends AgentLearning{
 	 */
 	private void treatRequest() {
 		double maxCrit = 0.0;
-		Request chosen = null;
 		Collections.shuffle(mailbox);
 		for(Request request : this.mailbox) {
 			if(request.getCriticality() > maxCrit) {
-				if(chosen != null) {
+				if(request instanceof RequestColumn) {
+					this.treatRequestColumn((RequestColumn) request);
+				}
+				if(request instanceof RequestRow) {
+					this.treatRequestRow((RequestRow) request);
+				}
+				/*if(chosen != null) {
 					this.function.rejectRequest(chosen.getAgentName(), chosen.getId());
 				}
 				chosen = request;
-				maxCrit = chosen.getCriticality();
+				maxCrit = chosen.getCriticality();*/
 			}
 			else {
 				this.function.rejectRequest(request.getAgentName(), request.getId());
 			}
 		}
 
-		if(chosen != null) {
+		/*if(chosen != null) {
 			if(chosen instanceof RequestColumn) {
 				this.treatRequestColumn((RequestColumn) chosen);
 			}
 			if(chosen instanceof RequestRow) {
 				this.treatRequestRow((RequestRow) chosen);
 			}
-		}
+		}*/
 		this.mailbox.clear();
 	}
 
@@ -299,7 +305,7 @@ public class DataAgent extends AgentLearning{
 				break;
 			case UNDERCHARGED:
 				if(!this.inputRefused.contains(request.getInputName())){
-					double maxTrust = 0.0;
+					/*double maxTrust = 0.0;
 					for(String s : this.inputChosen) {
 						if(this.trustValues.get(s)>maxTrust) {
 							maxTrust = this.trustValues.get(s);
@@ -308,7 +314,8 @@ public class DataAgent extends AgentLearning{
 					if(maxTrust < this.trustValues.get(request.getInputName())){
 						//this.inputChosen.add(request.getInputName());
 						this.function.applyForRequest(request, new Offer(this.name,this.trustValues.get(request.getInputName())));
-					}
+					}*/
+					this.function.applyForRequest(request, new Offer(this.name,this.trustValues.get(request.getInputName())));
 				}
 				break;
 			default:
@@ -360,7 +367,7 @@ public class DataAgent extends AgentLearning{
 	public void updateTrust(double feedback) {
 		for(String will : this.inputChosen) {
 			int sizeHistory = this.function.getHistoryFeedback().size();
-			if(sizeHistory > 1) {
+			if(sizeHistory > 1 && sizeHistory < 3) {
 				if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
 					this.trustValues.put(will, this.trustValues.get(will)-0.05);
 				}
@@ -426,6 +433,6 @@ public class DataAgent extends AgentLearning{
 		
 	}
 
-
+	
 
 }
