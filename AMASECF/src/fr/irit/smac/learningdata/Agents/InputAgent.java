@@ -31,11 +31,16 @@ public class InputAgent extends AgentLearning{
 
 	private List<Double> historyValues;
 
-	public enum Operator {PLUS,MOINS};
+	public enum Operator {PLUS,MOINS,NONE};
 
 	private Map<Operator,Double> influences;
 
 	private PropertyChangeSupport support;
+
+	private Operator decision;
+
+	private Double lastValue;
+
 
 	public InputAgent(String name, LearningFunction function, int id) {
 		this.name = name;
@@ -85,7 +90,8 @@ public class InputAgent extends AgentLearning{
 			this.historyValues.add(currentData.getValue());
 			this.lastData = currentData;
 		}
-
+		this.feedback = this.function.getFeedback();
+		this.lastValue = this.function.getLastValueOfinput(this.name);
 	}
 
 	/**
@@ -143,6 +149,19 @@ public class InputAgent extends AgentLearning{
 		if(this.lastData != null) {
 			computeInfluence();
 		}
+		if(this.lastValue != null) {
+			Double resultIncrease = this.function.computeResult(this.id,this.lastValue +5.0,this.lastValue);
+			Double resultDecrease = this.function.computeResult(this.id,this.lastValue -5.0,this.lastValue);
+			if(resultDecrease < resultIncrease) {
+				this.decision = Operator.PLUS;
+			}
+			else {
+				this.decision = Operator.MOINS;
+			}
+		}
+		else {
+			this.decision = Operator.NONE;
+		}
 
 	}
 
@@ -158,7 +177,7 @@ public class InputAgent extends AgentLearning{
 	public Double getInfluence() {
 		return this.influence;
 	}
-	
+
 	public Map<Operator, Double> getInfluences() {
 		return this.influences;
 	}
@@ -246,6 +265,10 @@ public class InputAgent extends AgentLearning{
 		List<String> dataApplying = new ArrayList<String>(this.function.getAllDataAgentApplyingForInput(this.name));
 		this.support.firePropertyChange("DATA", "", dataApplying);
 		this.support.firePropertyChange("CORRECT", "", this.function.getCorrectData(this.id));
+	}
+
+	public Operator getDecision() {
+		return this.decision;
 	}
 
 

@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -24,6 +26,9 @@ import fr.irit.smac.learningdata.EnvironmentLearning;
 import fr.irit.smac.learningdata.Agents.InputAgent.Operator;
 import fr.irit.smac.learningdata.requests.Offer;
 import fr.irit.smac.learningdata.requests.Request;
+import fr.irit.smac.learningdata.requests.RequestForRow;
+import fr.irit.smac.learningdata.requests.RequestForWeight;
+import fr.irit.smac.learningdata.requests.RequestRow;
 import fr.irit.smac.modelui.learning.DataLearningModel;
 import fr.irit.smac.modelui.learning.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
@@ -55,8 +60,14 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private Map<DataAgent, ColumnAgent> allColumnAgent;
 
 	private Map<String,AgentLearning> allAgents;
+	
+	private Map<String,Double> inputsValues;
 
 	private Map<Request,List<Offer>> auctions;
+
+	private Map<Integer, List<Configuration>> configurations;
+	
+	private Configuration lastBestConfig;
 
 	private Snapshot snapshot;
 
@@ -71,6 +82,12 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private int nbDataAgent = 0;
 
 	private boolean constraintRespected;
+
+	private int idConfig;
+
+	private Configuration currentConfig;
+	private boolean endNewConfig;
+	private Map<String, Operator> inputsDecisions;
 
 
 	public LearningFunction(AmasLearning amas, Object[] params, String name, SyntheticFunction function) {
@@ -88,10 +105,12 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.historyFeedback = new ArrayList<Double>();
 		this.allAgents = new TreeMap<String,AgentLearning>();
 		this.auctions = new HashMap<Request,List<Offer>>();
+		this.configurations = new TreeMap<Integer,List<Configuration>>();
+		this.inputsDecisions = new TreeMap<String,Operator>();
+		this.inputsValues = new TreeMap<String,Double>();
 		this.feedback = 0.0;
-
 		try {
-			this.file = new FileWriter(new File("C:\\\\Users\\\\gmarcill\\\\Desktop\\\\logAuctions.txt"));
+			this.file = new FileWriter(new File("C:\\\\Users\\\\gmarcill\\\\Desktop\\\\matrix.csv"));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -102,6 +121,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(Integer i : this.function.getInputIDRemoved()) {
 			this.createInputAgent("Input:"+i, i);
 		}
+		
 	}
 
 	public String getName() {
@@ -133,6 +153,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 		// Update the influence and the trust
 
+		this.idConfig = 0;
 
 	}
 
@@ -164,10 +185,12 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 
 
+
 		// Give the feedback of the function to all dataAgent
 		for(DataAgent dataAgent : this.allDataAgent.values()) {
 			dataAgent.setInputAvailable(this.allInputAgent.keySet());
-			dataAgent.updateTrust(this.feedback);
+			//dataAgent.updateTrust(this.feedback);
+			dataAgent.updateTrust(this.lastBestConfig);
 			dataAgent.clearInput();
 			dataAgent.fireTrustValues();
 			String data = dataAgent.getName();
@@ -186,10 +209,48 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 */
 	@Override
 	protected void onDecide() {
-		System.out.println("START DECIDE");
+		
+		
+		this.startInputAgent();
+		
+		for(InputAgent input : this.allInputAgent.values()) {
+			this.inputsDecisions.put(input.getName(), input.getDecision());
+		}
+		this.startDataAgent();
+		
+		this.startRowAgent();
+		
+		this.startColumnAgent();
+		
+		this.startWeightsAgent();
+		this.currentConfig = new Configuration(this.amas.getCycle(), 0);
+		
+		for(String input : this.allInputAgent.keySet()) {
+			this.currentConfig.addInput(input);
+			for(String data : this.allDataAgent.keySet()) {
+				this.currentConfig.addDataValueToInput(input, data, this.allDataAgent.get(data).getWeightOfInput(input));
+			}
+		}
+		/*System.out.println("START DECIDE");
 		int cycleDecide = 0;
 		this.constraintRespected = false;
-		while(!this.constraintRespected) {
+		this.endNewConfig = false;
+		Timer timer = new Timer();
+		timer.schedule(new TimerTask() {
+
+			@Override
+			public void run() {
+				endNewConfig = true;
+				
+			}
+			
+		}, 1000);
+
+		while(!this.endNewConfig) {
+			this.createConfiguration();
+		}
+		System.out.println("END CONFIG, NB CONFIG : "+this.configurations.get(this.getCycle()).size());*/
+		/*while(!this.constraintRespected) {
 			this.constraintRespected = true;
 			//Row Agent
 			this.startRowAgent();
@@ -234,11 +295,17 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 				r.setAttribute("Trust",dataAgent.getTrustValues().get(will));
 				this.snapshot.addRelation(r);
 			}
-		}
+		}*/
 
-		System.out.println("END DECIDE : "+cycleDecide);
 	}
 
+
+	private void startWeightsAgent() {
+		for(DataAgent data : this.allDataAgent.values()) {
+			data.startWeights();
+		}
+		
+	}
 
 	/**
 	 * Start the cycle for all row agent
@@ -303,14 +370,14 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private void startDataAgent() {
 
 		// Initialize the plan
-		Map<String, List<String>> acquisition = new TreeMap<String,List<String>>();
+		/*Map<String, List<String>> acquisition = new TreeMap<String,List<String>>();
 		for(String nameOfInput: this.allInputAgent.keySet()) {
 			acquisition.put(nameOfInput, new ArrayList<String>());
 		}
 
 		for(List<String> list :acquisition.values()) {
 			list.clear();
-		}
+		}*/
 
 		List<DataAgent> dataAgentRemaining = new ArrayList<DataAgent>(this.allDataAgent.values());
 		Collections.shuffle(dataAgentRemaining);
@@ -324,37 +391,42 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		// All DataAgent decide and act
 		for(DataAgent dataAgent : dataAgentRemaining) {
 			dataAgent.decideAndAct();
-			for(String will : dataAgent.getInputChosen()) {
+			/*for(String will : dataAgent.getInputChosen()) {
 				acquisition.get(will).add(dataAgent.getName());
-			}
+			}*/
 
 		}
-		for(String nameOfInput : acquisition.keySet()) {
+		/*for(String nameOfInput : acquisition.keySet()) {
 			if(acquisition.get(nameOfInput).size() > 1) {
 				for(String nameOfData : acquisition.get(nameOfInput)) {
 					this.allDataAgent.get(nameOfData).addConccurent(acquisition.get(nameOfInput));
 				}
 			}
-		}
+		}*/
 		//System.out.println(acquisition);
 
 	}
 
 	@Override
 	protected void onAct() {
-		for(DataAgent dataAgent : this.allDataAgent.values()) {
+		/*for(DataAgent dataAgent : this.allDataAgent.values()) {
 			for(String input : dataAgent.getInputChosen()) {
 				this.function.setOperandOfInput(this.allInputAgent.get(input).getId(), dataAgent.getName());
 			}
 		}
 
 		double result = this.function.computeInput();
-		this.feedback = result - this.getAmas().getResultOracle(this.name);
-		/*for(DataAgent dataAgent : this.allDataAgent.values()) {
-			System.out.println(dataAgent);
-			System.out.println(dataAgent.getTrustValues());
-		}*/
-		System.out.println("RES : "+this.function.computeInput() + " FEEDBACK  :" + feedback);
+		this.feedback = result - this.getAmas().getResultOracle(this.name);*/
+		
+		try {
+			this.feedback = this.calculResConfig(this.currentConfig);
+		} catch (IOException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+		
+		System.out.println("Feedback : "+ this.feedback);
+		
 		try {
 			Thread.sleep(100);
 		} catch (InterruptedException e) {
@@ -363,13 +435,17 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 
 		this.experiment.addSnapshot(this.snapshot);
+		
+		try {
+			this.writeMatrixInFile();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 
-
-		if(this.getCycle() == 100) {
+		if(this.getCycle() == 10000) {
 			try {
 				this.file.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			this.amas.getScheduler().stop();
@@ -383,6 +459,39 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			connection.close();
 
 		}
+	}
+
+	private void writeMatrixInFile() throws IOException {
+		this.file.write("\t");
+		List<String> datasTmp = new ArrayList<String>(this.allDataAgent.keySet());
+		List<String> inputTmp = new ArrayList<String>(this.allInputAgent.keySet());
+		for(String data : datasTmp) {
+			this.file.write(";"+data+" : "+this.allDataAgent.get(data).getValue());
+		}
+		for(String input : inputTmp) {
+			this.file.write("\n"+input);
+			for(String data : datasTmp) {
+				this.file.write(";"+this.currentConfig.getDataValueForInput(input, data));
+			}
+		}
+		this.file.write("\n"+"\n");
+	}
+
+	private Double calculResConfig(Configuration config) throws IOException {
+		Double res = 0.0;
+		this.file.write("\n values;");
+		for(String input : this.allInputAgent.keySet()) {
+			Double valueForInput = 0.0;
+			for(String data : this.allDataAgent.keySet()) {
+				valueForInput += config.getDataValueForInput(input, data) * this.allDataAgent.get(data).getValue();
+			}
+			this.function.setValueOfOperand(this.allInputAgent.get(input).getId(),valueForInput);
+			this.inputsValues.put(input, valueForInput);
+			this.file.write(""+valueForInput+";");
+		}
+		res = this.function.computeCustom();
+		this.file.write("\n"+res+"\n");
+		return res;
 	}
 
 	/**
@@ -439,7 +548,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	}
 
 	private void createColumnAgent(String name, DataAgent dag, Collection<InputAgent> inputs) {
-		ColumnAgent columnAgent = new ColumnAgent(name,dag,inputs,this);
+		ColumnAgent columnAgent = new ColumnAgent(name,dag,this);
 		this.allColumnAgent.put(dag, columnAgent);
 		this.allAgents.put(name, columnAgent);
 	}
@@ -639,7 +748,84 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		return res;
 	}
 
+	/**
+	 * Create new configurations util the timer is ended
+	 */
+	private void createConfiguration() {
+		Configuration config = new Configuration(this.getAmas().getCycle(),this.idConfig);
+		for(String input : this.allInputAgent.keySet()) {
+			config.addInput(input);
+		}
+		do {
+			this.startRowAgent();
 
+			this.startColumnAgent();
 
+			List<DataAgent> dataTmp = new ArrayList<DataAgent>(this.allDataAgent.values());
+			Collections.shuffle(dataTmp);
+			for(DataAgent data : dataTmp) {
+				data.manageConfig(config);
+			}
 
+			this.manageAuctionsConfig();
+		}while(!config.isConfigurationValid());
+		this.configurations.get(this.getCycle()).add(config);
+	}
+
+	private void manageAuctionsConfig() {
+		for(Request request : this.auctions.keySet()) {
+			Collections.shuffle(this.auctions.get(request));
+			for(Offer offer : this.auctions.get(request)) {
+				this.currentConfig.addDataValueToInput(((RequestRow)request).getInputName(), offer.getNameOfAgent(), offer.getOffer());
+			}
+		}
+	}
+
+	public Configuration getCurrentConfig() {
+		return this.currentConfig;
+	}
+
+	public Operator getInputDecision(String input) {
+		return this.allInputAgent.get(input).getDecision();
+	}
+
+	public Double computeResult(int id,double value, double initValue) {
+		this.function.setValueOfOperand(id, value);
+		double res = this.function.computeCustom();
+		this.function.setValueOfOperand(id, initValue);
+		return res;
+	}
+
+	public void askRow(String input, RequestForRow requestForRow) {
+		this.allRowAgent.get(input).addRequest(requestForRow);
+		
+	}
+
+	public Offer askData(String data,Operator decision, String input) {
+		return this.allDataAgent.get(data).askData(decision,input);
+	}
+
+	/**
+	 * Transfer a request to a weight agent by the data agent
+	 * @param input
+	 * 		The input (row) whiche send the request
+	 * @param data
+	 * 		The data holding the weight agent	 * 
+	 * @param requestToSend
+	 * 		The request
+	 */
+	public void sendRequestForWeight(String input, String data, RequestForWeight requestToSend) {
+		this.allDataAgent.get(data).sendRequestForWeight(input,requestToSend);
+		
+	}
+
+	public Map<String, Operator> getInputsDecisions() {
+		return this.inputsDecisions;
+	}
+
+	public Double getLastValueOfinput(String input) {
+		if(!this.inputsValues.containsKey(input))
+			return null;
+		return this.inputsValues.get(input);
+	}
 }

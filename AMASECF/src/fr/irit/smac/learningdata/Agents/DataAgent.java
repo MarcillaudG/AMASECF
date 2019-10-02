@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -13,6 +14,7 @@ import fr.irit.smac.learningdata.Agents.InputAgent.Operator;
 import fr.irit.smac.learningdata.requests.Offer;
 import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.learningdata.requests.RequestColumn;
+import fr.irit.smac.learningdata.requests.RequestForWeight;
 import fr.irit.smac.learningdata.requests.RequestRow;
 import fr.irit.smac.modelui.learning.DataLearningModel;
 
@@ -22,6 +24,7 @@ public class DataAgent extends AgentLearning{
 	private String name;
 
 	private double value;
+	private double old_value;
 
 	private LearningFunction function;
 	private double feedback;
@@ -35,6 +38,8 @@ public class DataAgent extends AgentLearning{
 
 	private Map<String,Double> influences;
 
+	private Map<String,WeightAgent> weightAgents;
+
 	private Set<String> inputsAvailable;
 
 	private Set<String> inputRefused;
@@ -47,6 +52,10 @@ public class DataAgent extends AgentLearning{
 	private Set<String> inputChosen;
 	private double criticality;
 	private PropertyChangeSupport support;
+
+	private Configuration lastConfig;
+
+	private Map<String,Operator> inputDecision;
 
 
 	public DataAgent(String name,LearningFunction function, int id) {
@@ -68,11 +77,14 @@ public class DataAgent extends AgentLearning{
 		this.inputChosen = new TreeSet<String>();
 		this.mailbox = new ArrayList<Request>();
 		this.inputRefused = new TreeSet<String>();
+		this.weightAgents = new TreeMap<String,WeightAgent>();
+		this.inputDecision = new TreeMap<String,Operator>();
 		this.support = new PropertyChangeSupport(this);
 	}
 
 	public void addNewInputAgent(String name) {
 		this.trustValues.put(name, DataAgent.INIT_VALUE);
+		this.weightAgents.put(name, new WeightAgent(this.function, this.name, name));
 	}
 
 	public String getName() {
@@ -129,18 +141,95 @@ public class DataAgent extends AgentLearning{
 		for(String nameOfData : this.namesOfConcurrent) {
 			this.dataAgentToDiscuss.add(this.function.getDataAgentWithName(nameOfData));
 		}
-
+		this.old_value = this.value;
 		this.value = this.function.getDataValue(this.name);
 		this.influences = this.function.getInfluences();
 
+		this.lastConfig = this.function.getCurrentConfig();
+		this.feedback = this.function.getFeedback();
+		this.inputDecision.clear();
+		for(String s : this.function.getInputsDecisions().keySet()) {
+			this.inputDecision.put(s, this.function.getInputsDecisions().get(s));
+		}
+		//this.inputDecision = this.function.getInputsDecisions();
 	}
 
 	/**
 	 * Decision
 	 */
 	public void decideAndAct() {
+		for(String input : this.inputDecision.keySet()) {
+			RequestForWeight request = new RequestForWeight(0, this.name, 0, null, "DATA");
+			switch(this.inputDecision.get(input)) {
+			case MOINS:
+				if(this.old_value > 0 ) {
+					if(this.feedback >= 0) {
+						request.setDecision(Operator.PLUS);
+					}
+					else {
+						request.setDecision(Operator.MOINS);
+					}
+				}
+				else {
+					if(this.feedback > 0) {
+						request.setDecision(Operator.MOINS);
+					}
+					else {
+						request.setDecision(Operator.PLUS);
+					}
+				}
+				break;
+			case NONE:
+				request.setDecision(Operator.NONE);
+				break;
+			case PLUS:
+				if(this.old_value > 0 ) {
+					if(this.feedback > 0) {
+						request.setDecision(Operator.MOINS);
+					}
+					else {
+						request.setDecision(Operator.PLUS);
+					}
+				}
+				else {
+					if(this.feedback >= 0) {
+						request.setDecision(Operator.PLUS);
+					}
+					else {
+						request.setDecision(Operator.MOINS);
+					}
+				}
+				break;
+			default:
+				break;
 
-		treatRequest();
+			}
+			//System.out.println("OLD:"+this.old_value+"|feedback:"+this.feedback+"|Decin:"+this.inputDecision.get(input)+"|req"+request.getDecision());
+			this.sendRequestForWeight(input, request);
+		}
+		/*String inputToIncrease = null;
+		Double max = 0.0;
+		for(String input : this.trustValues.keySet()) {
+			if(this.trustValues.get(input) > max) {
+				max = this.trustValues.get(input);
+				inputToIncrease = input;
+			}
+		}
+		if(inputToIncrease != null) {
+			Operator decisionInput = this.function.getInputDecision(inputToIncrease);
+			switch(decisionInput) {
+			case MOINS:
+					this.weightAgents.get(inputToIncrease).addRequest(new RequestForWeight(this.old_value, this.name, 0, Operator.PLUS, "DATA"));
+				break;
+			case PLUS:
+				this.weightAgents.get(inputToIncrease).addRequest(new RequestForWeight(this.old_value, this.name, 0, Operator.PLUS, "DATA"));
+				break;
+			default:
+				break;
+
+			}
+		}
+		treatRequest();*/
 
 
 
@@ -148,54 +237,7 @@ public class DataAgent extends AgentLearning{
 
 	}
 
-	private void updateTrustValues() {
-		for(String will : this.inputsAvailable) {
-			int sizeHistory = this.function.getHistoryFeedback().size();
-			if(sizeHistory > 1) {
-				if(this.function.getHistoryFeedback().get(sizeHistory-1) != 0 ) {
-					this.trustValues.put(will, this.trustValues.get(will)-0.01);
-				}
-				else {
-					this.trustValues.put(will, this.trustValues.get(will)+0.05);
-				}
-			}
-			if(sizeHistory > 2) {
-				if(function.getHistoryFeedback().get(sizeHistory-1) > function.getHistoryFeedback().get(sizeHistory-2)) {
-					this.trustValues.put(will, this.trustValues.get(will)-0.05);
-				}
-				else {
-					if(!function.getHistoryFeedback().get(sizeHistory-1).equals(function.getHistoryFeedback().get(sizeHistory-2))) {
-						this.trustValues.put(will, this.trustValues.get(will)+0.05);
-					}
-				}
-			}
-		}
 
-	}
-
-	/**
-	 * Remove from the list of input available  the will
-	 * if someone has a higher priority
-	 */
-	/*private void cooperate() {
-		if(this.will != null) {
-			for(DataAgent others : this.dataAgentToDiscuss) {
-				if(others.will != null) {
-					if(others.influences.get(this.will) > this.influences.get(this.will)) {
-						this.inputsAvailable.remove(this.will);
-					}
-					else {
-						String myname = this.name;
-						if(others.influences.get(this.will).equals(this.influences.get(this.will))) {
-							if(others.name.compareTo(myname) < 0) {
-								this.inputsAvailable.remove(this.will);
-							}
-						}
-					}
-				}
-			}
-		}
-	}*/
 
 	/**
 	 * Clear the old concurrent and add all the concurrent in param
@@ -386,8 +428,16 @@ public class DataAgent extends AgentLearning{
 				}
 			}
 		}
-
 	}
+
+	public void updateTrust(Configuration config) {
+		if(config != null) {
+			for(String input : this.trustValues.keySet()) {
+				this.trustValues.put(input, config.getDataValueForInput(input, this.name));
+			}
+		}
+	}
+
 
 	public Set<String> getWhatInputIAplied(){
 		return this.inputsAvailable;
@@ -417,7 +467,7 @@ public class DataAgent extends AgentLearning{
 
 	public void addPropertyChangeListener(DataLearningModel model) {
 		this.support.addPropertyChangeListener(model);
-		
+
 	}
 
 	public void printTrustValues() {
@@ -430,9 +480,105 @@ public class DataAgent extends AgentLearning{
 
 	public void fireTrustValues() {
 		this.support.firePropertyChange("TRUSTVALUES", null, this.trustValues);
-		
+
 	}
 
-	
+	public void manageConfig(Configuration config) {
+		Collections.shuffle(mailbox);
+		for(Request request : this.mailbox) {
+			if(request instanceof RequestRow) {
+				treatRequestRow((RequestRow) request,config);	
+			}
+			if(request instanceof RequestColumn) {
+				treatRequestColumn((RequestColumn) request,config);	
+			}
+		}	
+	}
+
+	private void treatRequestColumn(RequestColumn request, Configuration config) {
+		// TODO Auto-generated method stub
+
+	}
+
+	private void treatRequestRow(RequestRow request, Configuration config) {
+		Double value = this.trustValues.get(request.getInputName());
+		Random r = new Random();
+		Double configValue = config.getDataValueForInput(request.getInputName(), this.name);
+		Double prob = Math.abs(value - configValue);
+		prob = 0.5-prob;
+		if(r.nextDouble() < prob) {
+			switch(request.getReason()) {
+			case OVERCHARGED:
+				this.inputChosen.remove(((RequestRow) request).getInputName());
+				this.inputRefused.add(((RequestRow) request).getInputName());
+				break;
+			case UNDERCHARGED:
+				this.inputChosen.add(((RequestRow) request).getInputName());
+				break;
+			default:
+				break;
+			}
+			this.function.acceptRequest(request.getAgentName(), request.getId());
+		}
+	}
+
+	public Offer askData(Operator decision, String input) {
+		Offer res = this.weightAgents.get(input).askWeight(decision);
+		if(res != null) {
+			res.setOffer(this.old_value);
+		}
+		return res;
+	}
+
+	public void decreaseWeight(String input) {
+		this.weightAgents.get(input).decreaseWeight();
+
+	}
+
+	/**
+	 * Ask the weight to increase of the corresponding input
+	 * @param input
+	 */
+	public void increaseWeight(String input) {
+		this.weightAgents.get(input).increaseWeight();		
+	}
+
+	/**
+	 * Send a request to the weight agent of the corresponding input
+	 * @param input
+	 * 			The input
+	 * @param requestToSend
+	 * 			The request
+	 */
+	public void sendRequestForWeight(String input, RequestForWeight requestToSend) {
+		this.weightAgents.get(input).addRequest(requestToSend);
+	}
+
+	/**
+	 * Return the weight of an input
+	 * 
+	 * @param input
+	 * 		The input
+	 * @return the weight
+	 */
+	public Double getWeightOfInput(String input) {
+		return this.weightAgents.get(input).getWeight();
+	}
+
+	public void startWeights() {
+		List<WeightAgent> tmp = new ArrayList<WeightAgent>(this.weightAgents.values());
+		Collections.shuffle(tmp);
+		for(WeightAgent weight: tmp) {
+			weight.onPerceive();
+		}
+
+		Collections.shuffle(tmp);
+		for(WeightAgent weight: tmp) {
+			weight.onDecideAndAct();
+		}
+
+	}
+
+
 
 }

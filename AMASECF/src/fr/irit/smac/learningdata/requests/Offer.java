@@ -6,6 +6,12 @@ public class Offer {
 	
 	private double offer;
 
+	public Offer(String nameOfAgent, double offer) {
+		super();
+		this.nameOfAgent = nameOfAgent;
+		this.offer = offer;
+	}
+	
 	public String getNameOfAgent() {
 		return nameOfAgent;
 	}
@@ -22,11 +28,6 @@ public class Offer {
 		this.offer = offer;
 	}
 
-	public Offer(String nameOfAgent, double offer) {
-		super();
-		this.nameOfAgent = nameOfAgent;
-		this.offer = offer;
-	}
 
 	@Override
 	public String toString() {

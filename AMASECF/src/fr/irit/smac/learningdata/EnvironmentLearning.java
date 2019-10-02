@@ -26,7 +26,7 @@ public class EnvironmentLearning extends Environment{
 	private void init() {
 		this.shieldUser = new ShieldUser();
 		
-		this.shieldUser.initSetOfTypedVariableWithRange(100, 0, 100, "Type 1");
+		this.shieldUser.initSetOfTypedVariableWithRange(50, 0, 200, "Type 1");
 		this.shieldUser.generateAllFunctionsOfVariable();
 		
 		this.shieldUser.initGeneratorOfFunction();
@@ -40,7 +40,7 @@ public class EnvironmentLearning extends Environment{
 	}
 	
 	public double getValueOfVariableWithName(String name) {
-		return this.shieldUser.getValueOfVariable(name);
+		return this.shieldUser.getValueOfVariable(name)-100;
 	}
 
 	public Set<String> getAllVariable() {
@@ -53,6 +53,19 @@ public class EnvironmentLearning extends Environment{
 	}
 
 	
-	
+	/*public static void main(String args[]) {
+		EnvironmentLearning env = new EnvironmentLearning(args);
+		
+		env.generateNewValues();
+		
+		for(String s : env.getAllVariable()) {
+			System.out.println(s + " : "+env.getValueOfVariableWithName(s));
+		}
+		env.generateNewValues();
+		
+		for(String s : env.getAllVariable()) {
+			System.out.println(s + " : "+env.getValueOfVariableWithName(s));
+		}
+	}*/
 
 }
