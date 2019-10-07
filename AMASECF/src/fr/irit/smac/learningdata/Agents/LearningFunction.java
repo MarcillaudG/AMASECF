@@ -29,6 +29,7 @@ import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.learningdata.requests.RequestForRow;
 import fr.irit.smac.learningdata.requests.RequestForWeight;
 import fr.irit.smac.learningdata.requests.RequestRow;
+import fr.irit.smac.lxplot.LxPlot;
 import fr.irit.smac.modelui.learning.DataLearningModel;
 import fr.irit.smac.modelui.learning.InputLearningModel;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
@@ -120,6 +121,17 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 		for(Integer i : this.function.getInputIDRemoved()) {
 			this.createInputAgent("Input:"+i, i);
+		}
+		
+		for(InputAgent input : this.allInputAgent.values()) {
+			String nameOfCorrect = this.amas.getNameOfCorrectDataForInput(input.getId(), this.name);
+			try {
+				this.file.write(input.getName()+";");
+				this.file.write(nameOfCorrect+"\n");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		
 	}
@@ -369,16 +381,6 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 */
 	private void startDataAgent() {
 
-		// Initialize the plan
-		/*Map<String, List<String>> acquisition = new TreeMap<String,List<String>>();
-		for(String nameOfInput: this.allInputAgent.keySet()) {
-			acquisition.put(nameOfInput, new ArrayList<String>());
-		}
-
-		for(List<String> list :acquisition.values()) {
-			list.clear();
-		}*/
-
 		List<DataAgent> dataAgentRemaining = new ArrayList<DataAgent>(this.allDataAgent.values());
 		Collections.shuffle(dataAgentRemaining);
 
@@ -396,36 +398,22 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			}*/
 
 		}
-		/*for(String nameOfInput : acquisition.keySet()) {
-			if(acquisition.get(nameOfInput).size() > 1) {
-				for(String nameOfData : acquisition.get(nameOfInput)) {
-					this.allDataAgent.get(nameOfData).addConccurent(acquisition.get(nameOfInput));
-				}
-			}
-		}*/
-		//System.out.println(acquisition);
 
 	}
 
 	@Override
 	protected void onAct() {
-		/*for(DataAgent dataAgent : this.allDataAgent.values()) {
-			for(String input : dataAgent.getInputChosen()) {
-				this.function.setOperandOfInput(this.allInputAgent.get(input).getId(), dataAgent.getName());
-			}
-		}
-
-		double result = this.function.computeInput();
-		this.feedback = result - this.getAmas().getResultOracle(this.name);*/
 		
 		try {
 			this.feedback = this.calculResConfig(this.currentConfig);
+			this.feedback = this.feedback - this.amas.getResultOracle(this.name);
 		} catch (IOException e2) {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
 		}
 		
 		System.out.println("Feedback : "+ this.feedback);
+		LxPlot.getChart("Feedback").add(this.getCycle(), this.feedback);
 		
 		try {
 			Thread.sleep(100);
@@ -469,7 +457,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			this.file.write(";"+data+" : "+this.allDataAgent.get(data).getValue());
 		}
 		for(String input : inputTmp) {
-			this.file.write("\n"+input);
+			this.file.write("\n"+input + ":"+this.inputsDecisions.get(input));
 			for(String data : datasTmp) {
 				this.file.write(";"+this.currentConfig.getDataValueForInput(input, data));
 			}

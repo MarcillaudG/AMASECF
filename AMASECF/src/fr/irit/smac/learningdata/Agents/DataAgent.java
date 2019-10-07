@@ -137,10 +137,7 @@ public class DataAgent extends AgentLearning{
 	 * Perception
 	 */
 	public void perceive() {
-		this.dataAgentToDiscuss.clear();
-		for(String nameOfData : this.namesOfConcurrent) {
-			this.dataAgentToDiscuss.add(this.function.getDataAgentWithName(nameOfData));
-		}
+		
 		this.old_value = this.value;
 		this.value = this.function.getDataValue(this.name);
 		this.influences = this.function.getInfluences();
