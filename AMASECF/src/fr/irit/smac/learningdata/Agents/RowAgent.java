@@ -98,32 +98,6 @@ public class RowAgent extends AgentLearning{
 	}
 
 	public void decideAndAct() {
-		/*Double sum = 0.0;
-		for(String name: this.row.keySet()) {
-			sum += this.row.get(name);
-		}
-		if(sum <1.0) {
-			this.criticality = RowAgent.CRITICALITY_EMPTY;
-			this.reason = Reason.UNDERCHARGED;
-		}
-		else {
-			if(sum > 1.0) {
-				this.criticality = Math.pow(sum,2);
-				this.reason = Reason.OVERCHARGED;
-			}
-			else {
-				this.criticality = 0.0;
-			}
-
-		}
-
-		if(this.criticality > 0) {
-			//System.out.println("ROWAGENT : "+this.getName()+" "+this.criticality);
-			this.searchForService();
-			this.function.constraintNotRespected();
-		}
-
-		this.treatRequests();*/
 
 		this.decideRequests();
 
@@ -152,24 +126,46 @@ public class RowAgent extends AgentLearning{
 				}
 			}
 		}
+		sum = sum / this.row.values().size();
 		// In case of need of global criticality
 		List<RequestForWeight> toSend = new ArrayList<RequestForWeight>();
 		boolean maxDone = false;
-		for(String data : this.row.keySet()) {
-			RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "ROW");
-			if(this.row.get(data)==max) {
-				if(countNbMax >1) {
-					requestToSend.setDecision(Operator.NONE);
-				}else {
-					requestToSend.setDecision(Operator.PLUS);
-					requestToSend.setCriticality(1-this.row.get(data));
+		if(max == 1.0 && countNbMax >1) {
+			boolean sncSolve = false;for(String data : this.row.keySet()) {
+				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "ROW");
+				if(this.row.get(data)==max) {
+					if(!sncSolve) {
+						sncSolve = true;
+						requestToSend.setDecision(Operator.MOINS);
+					}else {
+						requestToSend.setDecision(Operator.PLUS);
+						requestToSend.setCriticality(1-this.row.get(data));
+					}
 				}
+				else {
+					requestToSend.setDecision(Operator.MOINS);
+					requestToSend.setCriticality(this.row.get(data));
+				}
+				this.function.sendRequestForWeight(this.input.getName(),data,requestToSend);
 			}
-			else {
-				requestToSend.setDecision(Operator.MOINS);
-				requestToSend.setCriticality(this.row.get(data));
+		}
+		else {
+			for(String data : this.row.keySet()) {
+				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "ROW");
+				if(this.row.get(data)==max) {
+					if(countNbMax >1) {
+						requestToSend.setDecision(Operator.NONE);
+					}else {
+						requestToSend.setDecision(Operator.PLUS);
+						requestToSend.setCriticality(1-this.row.get(data));
+					}
+				}
+				else {
+					requestToSend.setDecision(Operator.MOINS);
+					requestToSend.setCriticality(this.row.get(data));
+				}
+				this.function.sendRequestForWeight(this.input.getName(),data,requestToSend);
 			}
-			this.function.sendRequestForWeight(this.input.getName(),data,requestToSend);
 		}
 
 	}
@@ -319,5 +315,27 @@ public class RowAgent extends AgentLearning{
 
 	public void addRequest(RequestForRow requestForRow) {
 		this.mailBox.add(requestForRow);
+	}
+
+	public double getCriticalityAfterUpdate(String data, Operator decision) {
+		Map<String,Double> tmp = new TreeMap<String,Double>(this.row);
+		switch(decision) {
+		case MOINS:
+			tmp.put(data, Math.max(0.0,tmp.get(data)-0.05));
+			break;
+		case NONE:
+			break;
+		case PLUS:
+			tmp.put(data, Math.min(1.0,tmp.get(data)+0.05));
+			break;
+		default:
+			break;
+		
+		}
+		Double max =0.0;
+		for(String dataTmp : tmp.keySet()) {
+			max = Math.max(tmp.get(dataTmp), max);
+		}
+		return 1.0-max;
 	}
 }

@@ -1,6 +1,6 @@
 package fr.irit.smac.learningdata;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -10,6 +10,7 @@ import fr.irit.smac.amak.Scheduling;
 import fr.irit.smac.learningdata.Agents.LearningFunction;
 import fr.irit.smac.modelui.learning.DataLearningModel;
 import fr.irit.smac.modelui.learning.InputLearningModel;
+import fr.irit.smac.shield.c2av.Input;
 import fr.irit.smac.shield.c2av.SyntheticFunction;
 import fr.irit.smac.shield.exceptions.TooMuchVariableToRemoveException;
 
@@ -38,6 +39,7 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 		
 		String name = "Function1";
 		this.oracles.put(name, this.environment.generateFunction(name, 5));
+		this.environment.printAllVariables();
 		LearningFunction lfun = new LearningFunction(this, params,name,this.degradeFunction(name,3));
 		for(String input : lfun.getInputsName()) {
 			
@@ -66,7 +68,14 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 	}
 
 	public double getResultOracle(String name) {
-		return this.oracles.get(name).computeInput();
+		for(int i = 0; i < this.oracles.get(name).getNbInput();i++) {
+			this.oracles.get(name).setValueOfOperand(i, this.getValueOfVariable(this.oracles.get(name).getInput(i).getOperand()));
+		}
+		return this.oracles.get(name).computeCustomOracle();
+	}
+	
+	public double getResultOracle(String name,List<Integer> inputs) {
+		return this.oracles.get(name).computeInput(inputs);
 	}
 
 
@@ -101,6 +110,22 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 		this.environment.generateNewValues();
 	}
 
+	@Override
+	protected void onSystemCycleBegin() {
+		super.onSystemCycleBegin();
+		for(LearningFunction lf : this.allFunctions.values()) {
+			this.setValueOfVariableNonDegraded(lf);
+		}
+	}
+
+
+	public void setValueOfVariableNonDegraded(LearningFunction lf) {
+		for(int i = 0; i < this.oracles.get(lf.getName()).getNbInput();i++) {
+			if(!lf.getFunction().getInputIDRemoved().contains(i)) {
+				lf.getFunction().setValueOfOperand(i,this.getValueOfVariable(lf.getFunction().getInput(i).getOperand()));
+			}
+		}
+	}
 
 
 }

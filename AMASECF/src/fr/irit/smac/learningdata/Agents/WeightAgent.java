@@ -95,7 +95,7 @@ public class WeightAgent extends AgentLearning{
 
 	}
 
-	public void onDecideAndAct() {
+	public void onDecideAndAct(int step) {
 
 		//this.myFunction.askRow(this.myInput,new RequestForRow(this.dataRequest.getCriticality(), this.dataRequest.getAgentName(), this.dataRequest.getId(), this.dataRequest.getDecision()));
 		Operator myEnvy = this.computeEnvy();
@@ -104,63 +104,46 @@ public class WeightAgent extends AgentLearning{
 		allDecisions.add(this.dataRequest.getDecision());
 		allDecisions.add(this.rowRequest.getDecision());
 		allDecisions.add(this.columnRequest.getDecision());
-		if(this.isDecisionCoherent(allDecisions)) {
-			switch(this.dataRequest.getDecision()) {
-			case MOINS:
-				this.decreaseWeight();
-				break;
-			case NONE:
-				break;
-			case PLUS:
-				this.increaseWeight();
-				break;
-			default:
-				break;
 
+		if(step == 0) {
+			if(this.isDecisionCoherent(allDecisions)) {
+				this.applyDecision(this.dataRequest.getDecision());
 			}
 		}
-		else {
-			this.solveSNC();
+		if(step == 1) {
+			if(this.dataRequest.getDecision().equals(this.rowRequest.getDecision()) || this.dataRequest.getDecision().equals(this.columnRequest.getDecision())) {
+				this.applyDecision(this.dataRequest.getDecision());
+			}
 		}
-
-
-
-		// do I have a request
-		/*if(this.rowRequest == null && this.dataRequest == null) {
-
-		}else {
-			// are the request in contradiction ?
-			boolean problem = !(this.rowRequest == null || this.dataRequest == null ||this.rowRequest.getDecision().equals(dataRequest.getDecision()));
-			Operator decision = null;		
-			if(problem) {
-				solveSNC();
+		if(step == 2) {
+			double inputCrit = this.myFunction.getInputCriticalityAfterUpdate(this.myData,this.myInput,this.dataRequest.getDecision());
+			double dataCrit = this.myFunction.getDataCriticalityAfterUpdate(this.myData,this.myInput,this.dataRequest.getDecision());
+			if(inputCrit >dataCrit) {
+				this.applyDecision(this.dataRequest.getDecision());
 			}
 			else {
-				// I notify that the request is accepted and I update the wweight
-				if(this.rowRequest != null) {
-					decision = this.rowRequest.getDecision();
-					if(this.dataRequest != null) {
-						this.myFunction.getDataAgentWithName(this.dataRequest.getAgentName()).requestAccepted(this.dataRequest.getId());
-					}
-					this.myFunction.getRowAgentWithName(this.rowRequest.getAgentName()).requestAccepted(this.rowRequest.getId());
-				}
-				else {
-					decision = this.dataRequest.getDecision();
-					this.myFunction.getDataAgentWithName(this.dataRequest.getAgentName()).requestAccepted(this.dataRequest.getId());
-				}
-				switch(decision) {
-				case MOINS:
-					this.weight = Math.min(this.weight-0.05, 0.0);
-					break;
-				case PLUS:
-					this.weight = Math.max(this.weight+0.05, 1.0);
-					break;
-				default:
-					break;
-
-				}
+				this.applyDecision(this.dataRequest.getDecision());
 			}
-		}*/
+		}
+
+
+	}
+
+	private void applyDecision(Operator decision) {
+		switch(decision) {
+		case MOINS:
+			this.decreaseWeight();
+			break;
+		case NONE:
+			break;
+		case PLUS:
+			this.increaseWeight();
+			break;
+		default:
+			break;
+
+		}
+		
 	}
 
 	@SuppressWarnings("unused")
@@ -260,14 +243,23 @@ public class WeightAgent extends AgentLearning{
 	}
 
 	public void decreaseWeight() {
+		if(this.weight>0.0) {
+			this.myFunction.modification();
+		}
 		this.weight = Math.max(0.0, this.weight-0.05);
 
 	}
 
 	public void increaseWeight() {
+		if(this.weight < 1.0) {
+			this.myFunction.modification();
+		}
 		this.weight = Math.min(1.0, this.weight+0.05);
 	}
 
+	public void setWeight(Double weight) {
+		this.weight = weight;
+	}
 
 
 }

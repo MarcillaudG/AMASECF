@@ -52,6 +52,11 @@ public class EnvironmentLearning extends Environment{
 		
 	}
 
+	public void printAllVariables() {
+		// TODO Auto-generated method stub
+		
+	}
+
 	
 	/*public static void main(String args[]) {
 		EnvironmentLearning env = new EnvironmentLearning(args);

@@ -84,7 +84,10 @@ public class DataAgent extends AgentLearning{
 
 	public void addNewInputAgent(String name) {
 		this.trustValues.put(name, DataAgent.INIT_VALUE);
-		this.weightAgents.put(name, new WeightAgent(this.function, this.name, name));
+		
+		WeightAgent weight = new WeightAgent(this.function, this.name, name);
+		this.weightAgents.put(name, weight);
+		this.function.addNewWeightAgent(weight,this.name,name);
 	}
 
 	public String getName() {
@@ -119,9 +122,6 @@ public class DataAgent extends AgentLearning{
 	public void setFeedback(double feedback) {
 		this.feedback= feedback;
 
-		/*if(this.will != null) {
-			this.updateTrustValues();
-		}*/
 	}
 
 	/**
@@ -301,14 +301,6 @@ public class DataAgent extends AgentLearning{
 			}
 		}
 
-		/*if(chosen != null) {
-			if(chosen instanceof RequestColumn) {
-				this.treatRequestColumn((RequestColumn) chosen);
-			}
-			if(chosen instanceof RequestRow) {
-				this.treatRequestRow((RequestRow) chosen);
-			}
-		}*/
 		this.mailbox.clear();
 	}
 
@@ -571,7 +563,7 @@ public class DataAgent extends AgentLearning{
 
 		Collections.shuffle(tmp);
 		for(WeightAgent weight: tmp) {
-			weight.onDecideAndAct();
+			weight.onDecideAndAct(0);
 		}
 
 	}

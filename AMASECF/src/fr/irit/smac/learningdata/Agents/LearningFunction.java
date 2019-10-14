@@ -20,6 +20,8 @@ import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import fr.irit.smac.amak.Agent;
 import fr.irit.smac.learningdata.AmasLearning;
 import fr.irit.smac.learningdata.EnvironmentLearning;
@@ -61,13 +63,15 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	private Map<DataAgent, ColumnAgent> allColumnAgent;
 
 	private Map<String,AgentLearning> allAgents;
-	
+
+	private Map<Pair<String,String>, WeightAgent> allWeightAgent;
+
 	private Map<String,Double> inputsValues;
 
 	private Map<Request,List<Offer>> auctions;
 
 	private Map<Integer, List<Configuration>> configurations;
-	
+
 	private Configuration lastBestConfig;
 
 	private Snapshot snapshot;
@@ -82,12 +86,11 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	private int nbDataAgent = 0;
 
-	private boolean constraintRespected;
+	private boolean modificationHappened;
 
 	private int idConfig;
 
 	private Configuration currentConfig;
-	private boolean endNewConfig;
 	private Map<String, Operator> inputsDecisions;
 
 
@@ -103,12 +106,14 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		this.allInputAgent = new TreeMap<String,InputAgent>();
 		this.allColumnAgent = new HashMap<DataAgent, ColumnAgent>();
 		this.allRowAgent = new HashMap<InputAgent, RowAgent>();
+
 		this.historyFeedback = new ArrayList<Double>();
 		this.allAgents = new TreeMap<String,AgentLearning>();
 		this.auctions = new HashMap<Request,List<Offer>>();
 		this.configurations = new TreeMap<Integer,List<Configuration>>();
 		this.inputsDecisions = new TreeMap<String,Operator>();
 		this.inputsValues = new TreeMap<String,Double>();
+		this.allWeightAgent = new TreeMap<Pair<String,String>,WeightAgent>();
 		this.feedback = 0.0;
 		try {
 			this.file = new FileWriter(new File("C:\\\\Users\\\\gmarcill\\\\Desktop\\\\matrix.csv"));
@@ -122,18 +127,19 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		for(Integer i : this.function.getInputIDRemoved()) {
 			this.createInputAgent("Input:"+i, i);
 		}
-		
+		//this.amas.setValueOfVariableNonDegraded(this);
 		for(InputAgent input : this.allInputAgent.values()) {
 			String nameOfCorrect = this.amas.getNameOfCorrectDataForInput(input.getId(), this.name);
 			try {
 				this.file.write(input.getName()+";");
 				this.file.write(nameOfCorrect+"\n");
+				//this.function.setValueOfOperand(input.getId(), this.amas.getValueOfVariable(nameOfCorrect));
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-		
+
 	}
 
 	public String getName() {
@@ -214,6 +220,8 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			this.snapshot.addEntity(ent);
 		}
 
+		this.modificationHappened = false;
+
 	}
 
 	/**
@@ -221,22 +229,28 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 */
 	@Override
 	protected void onDecide() {
-		
-		
+
+
 		this.startInputAgent();
-		
+
 		for(InputAgent input : this.allInputAgent.values()) {
 			this.inputsDecisions.put(input.getName(), input.getDecision());
 		}
 		this.startDataAgent();
-		
+
 		this.startRowAgent();
-		
+
 		this.startColumnAgent();
-		
-		this.startWeightsAgent();
+		try {
+			this.startWeightsAgent();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		this.currentConfig = new Configuration(this.amas.getCycle(), 0);
-		
+
+
+
+
 		for(String input : this.allInputAgent.keySet()) {
 			this.currentConfig.addInput(input);
 			for(String data : this.allDataAgent.keySet()) {
@@ -253,9 +267,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			@Override
 			public void run() {
 				endNewConfig = true;
-				
+
 			}
-			
+
 		}, 1000);
 
 		while(!this.endNewConfig) {
@@ -312,11 +326,28 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	}
 
 
-	private void startWeightsAgent() {
-		for(DataAgent data : this.allDataAgent.values()) {
+	private void startWeightsAgent() throws Exception {
+		/*for(DataAgent data : this.allDataAgent.values()) {
 			data.startWeights();
+		}*/
+
+		List<WeightAgent> tmp = new ArrayList<WeightAgent>(this.allWeightAgent.values());
+		Collections.shuffle(tmp);
+		for(WeightAgent weight : tmp) {
+			weight.onPerceive();
 		}
-		
+		int  step = 0;
+		while(!this.modificationHappened) {
+			Collections.shuffle(tmp);
+			for(WeightAgent weight : tmp) {
+				weight.onDecideAndAct(step);
+			}
+			step++;
+			if(step >3) {
+				throw new Exception("No one want to change");
+			}
+		}
+
 	}
 
 	/**
@@ -403,18 +434,50 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	@Override
 	protected void onAct() {
-		
+		this.amas.setValueOfVariableNonDegraded(this);
+		List<Integer> inputs = new ArrayList<Integer>();
+		Double res =0.0;
+		for(InputAgent input : this.allInputAgent.values()) {
+			inputs.add(input.getId());
+		}
 		try {
 			this.feedback = this.calculResConfig(this.currentConfig);
-			this.feedback = this.feedback - this.amas.getResultOracle(this.name);
+			res = this.feedback;
+			if(this.feedback > this.amas.getResultOracle(this.name)) {
+				this.feedback = 1.0;
+			}
+			else {
+				if(this.feedback < this.amas.getResultOracle(this.name)) {
+					this.feedback = -1.0;
+				}
+				else {
+					this.feedback = 0.0;
+				}
+			}
+			this.file.write("\n"+this.feedback+";"+res+";"+this.amas.getResultOracle(this.name)+"\n");
+			//this.feedback = this.feedback - this.amas.getResultOracle(this.name);
 		} catch (IOException e2) {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
 		}
-		
+		//TEST
+		/*for(InputAgent input : this.allInputAgent.values()) {
+			String nameOfCorrect = this.amas.getNameOfCorrectDataForInput(input.getId(), this.name);
+			this.function.setValueOfOperand(input.getId(), this.amas.getValueOfVariable(nameOfCorrect));
+		}
+		System.out.println("RESULT :   "+this.function.computeCustom()+"          "+this.amas.getResultOracle(this.name));*/
 		System.out.println("Feedback : "+ this.feedback);
-		LxPlot.getChart("Feedback").add(this.getCycle(), this.feedback);
+		LxPlot.getChart("Feedback").add("Difference",this.getCycle(), Math.abs(res-this.amas.getResultOracle(this.name)));
+		for(InputAgent input : this.allInputAgent.values()) {
+			for(DataAgent data : this.allDataAgent.values()) {
+				double critInput = this.allRowAgent.get(input).getCriticalityAfterUpdate(data.getName(), Operator.NONE);
+				double critData = this.allColumnAgent.get(data).getCriticalityAfterUpdate(input.getName(),Operator.NONE);
+				LxPlot.getChart(input.getName() + " and "+data.getName()).add("CritInput", this.getCycle(), critInput);
+				LxPlot.getChart(input.getName() + " and "+data.getName()).add("CritData", this.getCycle(), critData);
+			}
+		}
 		
+
 		try {
 			Thread.sleep(100);
 		} catch (InterruptedException e) {
@@ -423,7 +486,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		}
 
 		this.experiment.addSnapshot(this.snapshot);
-		
+
 		try {
 			this.writeMatrixInFile();
 		} catch (IOException e1) {
@@ -457,7 +520,23 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			this.file.write(";"+data+" : "+this.allDataAgent.get(data).getValue());
 		}
 		for(String input : inputTmp) {
-			this.file.write("\n"+input + ":"+this.inputsDecisions.get(input));
+			String sensy ="";
+			switch(this.inputsDecisions.get(input)) {
+			case MOINS:
+				sensy = "Decrois";
+				break;
+			case NONE:
+				sensy = "None";
+				break;
+			case PLUS:
+				sensy = "Crois";
+				break;
+			default:
+				sensy = "Default";
+				break;
+			
+			}
+			this.file.write("\n"+input + ":"+sensy);
 			for(String data : datasTmp) {
 				this.file.write(";"+this.currentConfig.getDataValueForInput(input, data));
 			}
@@ -478,7 +557,6 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			this.file.write(""+valueForInput+";");
 		}
 		res = this.function.computeCustom();
-		this.file.write("\n"+res+"\n");
 		return res;
 	}
 
@@ -617,10 +695,6 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	public void rejectRequest(String agentName, int id) {
 		this.allAgents.get(agentName).requestDenied(id);
 
-	}
-
-	public void constraintNotRespected() {
-		this.constraintRespected = false;
 	}
 
 
@@ -786,7 +860,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	public void askRow(String input, RequestForRow requestForRow) {
 		this.allRowAgent.get(input).addRequest(requestForRow);
-		
+
 	}
 
 	public Offer askData(String data,Operator decision, String input) {
@@ -804,7 +878,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	 */
 	public void sendRequestForWeight(String input, String data, RequestForWeight requestToSend) {
 		this.allDataAgent.get(data).sendRequestForWeight(input,requestToSend);
-		
+
 	}
 
 	public Map<String, Operator> getInputsDecisions() {
@@ -815,5 +889,26 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		if(!this.inputsValues.containsKey(input))
 			return null;
 		return this.inputsValues.get(input);
+	}
+
+	public void modification() {
+		this.modificationHappened = true;
+	}
+
+	public void addNewWeightAgent(WeightAgent weight,String data,String input) {
+		this.allWeightAgent.put(Pair.of(input, data), weight);
+
+	}
+
+	public double getInputCriticalityAfterUpdate(String data,String input, Operator decision) {
+		return this.allRowAgent.get(this.allInputAgent.get(input)).getCriticalityAfterUpdate(data,decision);
+	}
+
+	public double getDataCriticalityAfterUpdate(String data, String input, Operator decision) {
+		return this.allColumnAgent.get(this.allDataAgent.get(data)).getCriticalityAfterUpdate(input,decision);
+	}
+
+	public SyntheticFunction getFunction() {
+		return this.function;
 	}
 }

@@ -92,26 +92,52 @@ public class ColumnAgent extends AgentLearning{
 			}
 		}
 		double sum = 0.0;
-		for(String input : this.column.keySet()) {
-			RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "COLUMN");
-			if(this.column.get(input)==max && max >= 0.5) {
-				if(countNbMax >1 ) {
-					sum += this.column.get(input);
-					requestToSend.setCriticality(this.column.get(input));
-					requestToSend.setDecision(Operator.NONE);
+		if(max == 1.0 && countNbMax > 1 ) {
+			boolean sncSolve = false;
+			for(String input : this.column.keySet()) {
+				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "COLUMN");
+				if(this.column.get(input)==max) {
+					if(!sncSolve ) {
+						sncSolve = true;
+						requestToSend.setCriticality(this.column.get(input));
+						requestToSend.setDecision(Operator.MOINS);
+					}
+					else {
+						requestToSend.setCriticality(1-this.column.get(input));
+						requestToSend.setDecision(Operator.PLUS);
+						sum += this.column.get(input);
+					}
 				}
 				else {
-					sum += 1-this.column.get(input);
-					requestToSend.setCriticality(1-this.column.get(input));
-					requestToSend.setDecision(Operator.PLUS);
+					requestToSend.setCriticality(this.column.get(input));
+					requestToSend.setDecision(Operator.MOINS);
+					sum += this.column.get(input);
 				}
+				this.function.sendRequestForWeight(input,this.dataAgent.getName(),requestToSend);
 			}
-			else {
-				sum += this.column.get(input);
-				requestToSend.setCriticality(this.column.get(input));
-				requestToSend.setDecision(Operator.MOINS);
+		}
+		else {
+			for(String input : this.column.keySet()) {
+				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "COLUMN");
+				if(this.column.get(input)==max) {
+					if(countNbMax >1 ) {
+						sum += this.column.get(input);
+						requestToSend.setCriticality(this.column.get(input));
+						requestToSend.setDecision(Operator.NONE);
+					}
+					else {
+						sum += 1-this.column.get(input);
+						requestToSend.setCriticality(1-this.column.get(input));
+						requestToSend.setDecision(Operator.PLUS);
+					}
+				}
+				else {
+					sum += this.column.get(input);
+					requestToSend.setCriticality(this.column.get(input));
+					requestToSend.setDecision(Operator.MOINS);
+				}
+				this.function.sendRequestForWeight(input,this.dataAgent.getName(),requestToSend);
 			}
-			this.function.sendRequestForWeight(input,this.dataAgent.getName(),requestToSend);
 		}
 
 	}
@@ -183,6 +209,39 @@ public class ColumnAgent extends AgentLearning{
 		} else if (!name.equals(other.name))
 			return false;
 		return true;
+	}
+
+	/**
+	 * Return the criticality calculated after the possible update
+	 * @param input
+	 * @param decision
+	 * @return the criticality
+	 */
+	public double getCriticalityAfterUpdate(String input, Operator decision) {
+		Map<String,Double> tmp = new TreeMap<String,Double>(this.column);
+		switch(decision) {
+		case MOINS:
+			tmp.put(input, Math.max(0.0,tmp.get(input)-0.05));
+			break;
+		case NONE:
+			break;
+		case PLUS:
+			tmp.put(input, Math.min(1.0,tmp.get(input)+0.05));
+			break;
+		default:
+			break;
+		
+		}
+		Double max =0.0;
+		for(String inputTmp : tmp.keySet()) {
+			max = Math.max(tmp.get(inputTmp), max);
+		}
+		if(max < 0.5) {
+			return max;
+		}
+		else {
+			return 1.0-max;
+		}
 	}
 
 
