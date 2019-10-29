@@ -230,21 +230,22 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	@Override
 	protected void onDecide() {
 
-
 		this.startInputAgent();
 
 		for(InputAgent input : this.allInputAgent.values()) {
 			this.inputsDecisions.put(input.getName(), input.getDecision());
 		}
-		this.startDataAgent();
+		if(this.feedback !=0) {
+			this.startDataAgent();
 
-		this.startRowAgent();
+			this.startRowAgent();
 
-		this.startColumnAgent();
-		try {
-			this.startWeightsAgent();
-		} catch (Exception e) {
-			e.printStackTrace();
+			this.startColumnAgent();
+			try {
+				this.startWeightsAgent();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		this.currentConfig = new Configuration(this.amas.getCycle(), 0);
 
@@ -257,71 +258,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 				this.currentConfig.addDataValueToInput(input, data, this.allDataAgent.get(data).getWeightOfInput(input));
 			}
 		}
-		/*System.out.println("START DECIDE");
-		int cycleDecide = 0;
-		this.constraintRespected = false;
-		this.endNewConfig = false;
-		Timer timer = new Timer();
-		timer.schedule(new TimerTask() {
 
-			@Override
-			public void run() {
-				endNewConfig = true;
-
-			}
-
-		}, 1000);
-
-		while(!this.endNewConfig) {
-			this.createConfiguration();
-		}
-		System.out.println("END CONFIG, NB CONFIG : "+this.configurations.get(this.getCycle()).size());*/
-		/*while(!this.constraintRespected) {
-			this.constraintRespected = true;
-			//Row Agent
-			this.startRowAgent();
-
-			//ColumnAgent
-			this.startColumnAgent();
-
-			// InputAgent
-			this.startInputAgent();
-
-			// DataAgent
-			this.startDataAgent();
-
-			try {
-				this.file.write("BEGINING OF THE AUCTIONS : "+cycleDecide+ "\n");
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			this.manageAuctions();
-
-			for(DataAgent dataAgent : this.allDataAgent.values()) {
-				for(String will : dataAgent.getInputChosen()) {
-					this.allInputAgent.get(will).addDataAgent(dataAgent);
-				}
-			}
-			cycleDecide++;
-			for(InputAgent input : this.allInputAgent.values()) {
-				input.fireAllProperty();
-			}
-			try {
-				Thread.sleep(0);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		for(DataAgent dataAgent : this.allDataAgent.values()) {
-			for(String will : dataAgent.getInputChosen()) {
-				this.allInputAgent.get(will).setDataAgent(dataAgent);
-				Relation r =new Relation(dataAgent.getName() + " apply to "+will, dataAgent.getName(), will, false, "Applying");
-				r.setAttribute("Trust",dataAgent.getTrustValues().get(will));
-				this.snapshot.addRelation(r);
-			}
-		}*/
 
 	}
 
@@ -476,7 +413,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 				LxPlot.getChart(input.getName() + " and "+data.getName()).add("CritData", this.getCycle(), critData);
 			}
 		}
-		
+
 
 		try {
 			Thread.sleep(100);
@@ -534,7 +471,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			default:
 				sensy = "Default";
 				break;
-			
+
 			}
 			this.file.write("\n"+input + ":"+sensy);
 			for(String data : datasTmp) {
@@ -869,8 +806,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	/**
 	 * Transfer a request to a weight agent by the data agent
+	 * 
 	 * @param input
-	 * 		The input (row) whiche send the request
+	 * 		The input (row) which send the request
 	 * @param data
 	 * 		The data holding the weight agent	 * 
 	 * @param requestToSend
@@ -896,6 +834,16 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 	}
 
 	public void addNewWeightAgent(WeightAgent weight,String data,String input) {
+		if(this.amas.getNameOfCorrectDataForInput(this.allInputAgent.get(input).getId(), this.name).equals(data)) {
+			weight.setWeight(0.6);
+		}
+		else {
+			Random rand = new Random();
+			if(rand.nextBoolean())
+				weight.setWeight(0.1);
+			else
+				weight.setWeight(0.6);
+		}
 		this.allWeightAgent.put(Pair.of(input, data), weight);
 
 	}

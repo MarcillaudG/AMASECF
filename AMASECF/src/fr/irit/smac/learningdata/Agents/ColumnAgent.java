@@ -103,7 +103,7 @@ public class ColumnAgent extends AgentLearning{
 						requestToSend.setDecision(Operator.MOINS);
 					}
 					else {
-						requestToSend.setCriticality(1-this.column.get(input));
+						requestToSend.setCriticality(Math.abs(1-this.column.get(input)));
 						requestToSend.setDecision(Operator.PLUS);
 						sum += this.column.get(input);
 					}
@@ -120,15 +120,21 @@ public class ColumnAgent extends AgentLearning{
 			for(String input : this.column.keySet()) {
 				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "COLUMN");
 				if(this.column.get(input)==max) {
-					if(countNbMax >1 ) {
-						sum += this.column.get(input);
-						requestToSend.setCriticality(this.column.get(input));
-						requestToSend.setDecision(Operator.NONE);
+					if(max > 1.0) {
+						requestToSend.setCriticality(Math.abs(1-this.column.get(input)));
+						requestToSend.setDecision(Operator.MOINS);
 					}
 					else {
-						sum += 1-this.column.get(input);
-						requestToSend.setCriticality(1-this.column.get(input));
-						requestToSend.setDecision(Operator.PLUS);
+						if(countNbMax >1 ) {
+							sum += this.column.get(input);
+							requestToSend.setCriticality(this.column.get(input));
+							requestToSend.setDecision(Operator.NONE);
+						}
+						else {
+							sum += 1-this.column.get(input);
+							requestToSend.setCriticality(Math.abs(1-this.column.get(input)));
+							requestToSend.setDecision(Operator.PLUS);
+						}
 					}
 				}
 				else {
@@ -230,7 +236,7 @@ public class ColumnAgent extends AgentLearning{
 			break;
 		default:
 			break;
-		
+
 		}
 		Double max =0.0;
 		for(String inputTmp : tmp.keySet()) {
@@ -240,7 +246,7 @@ public class ColumnAgent extends AgentLearning{
 			return max;
 		}
 		else {
-			return 1.0-max;
+			return Math.abs(1.0-max);
 		}
 	}
 

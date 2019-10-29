@@ -1,5 +1,6 @@
 package fr.irit.smac.learningdata.Agents;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +126,7 @@ public class WeightAgent extends AgentLearning{
 				this.applyDecision(this.dataRequest.getDecision());
 			}
 		}
+		
 
 
 	}
@@ -246,15 +248,17 @@ public class WeightAgent extends AgentLearning{
 		if(this.weight>0.0) {
 			this.myFunction.modification();
 		}
-		this.weight = Math.max(0.0, this.weight-0.05);
-
+		this.weight = Math.max(0.0, (this.weight*100-5)/100);
+		
 	}
 
 	public void increaseWeight() {
-		if(this.weight < 1.0) {
+		/*if(this.weight < 1.0) {
 			this.myFunction.modification();
-		}
-		this.weight = Math.min(1.0, this.weight+0.05);
+		}*/
+		//this.weight = Math.min(1.0, this.weight+0.05);
+		this.myFunction.modification();
+		this.weight = (this.weight*100+5)/100;
 	}
 
 	public void setWeight(Double weight) {

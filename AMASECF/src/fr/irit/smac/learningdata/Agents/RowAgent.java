@@ -128,8 +128,6 @@ public class RowAgent extends AgentLearning{
 		}
 		sum = sum / this.row.values().size();
 		// In case of need of global criticality
-		List<RequestForWeight> toSend = new ArrayList<RequestForWeight>();
-		boolean maxDone = false;
 		if(max == 1.0 && countNbMax >1) {
 			boolean sncSolve = false;for(String data : this.row.keySet()) {
 				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "ROW");
@@ -139,7 +137,7 @@ public class RowAgent extends AgentLearning{
 						requestToSend.setDecision(Operator.MOINS);
 					}else {
 						requestToSend.setDecision(Operator.PLUS);
-						requestToSend.setCriticality(1-this.row.get(data));
+						requestToSend.setCriticality(Math.abs(1-this.row.get(data)));
 					}
 				}
 				else {
@@ -153,11 +151,17 @@ public class RowAgent extends AgentLearning{
 			for(String data : this.row.keySet()) {
 				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "ROW");
 				if(this.row.get(data)==max) {
-					if(countNbMax >1) {
-						requestToSend.setDecision(Operator.NONE);
-					}else {
-						requestToSend.setDecision(Operator.PLUS);
-						requestToSend.setCriticality(1-this.row.get(data));
+					if(max > 1.0) {
+						requestToSend.setDecision(Operator.MOINS);
+						requestToSend.setCriticality(Math.abs(1-this.row.get(data)));
+					}
+					else {
+						if(countNbMax >1) {
+							requestToSend.setDecision(Operator.NONE);
+						}else {
+							requestToSend.setDecision(Operator.PLUS);
+							requestToSend.setCriticality(Math.abs(1-this.row.get(data)));
+						}
 					}
 				}
 				else {
@@ -330,12 +334,12 @@ public class RowAgent extends AgentLearning{
 			break;
 		default:
 			break;
-		
+
 		}
 		Double max =0.0;
 		for(String dataTmp : tmp.keySet()) {
 			max = Math.max(tmp.get(dataTmp), max);
 		}
-		return 1.0-max;
+		return Math.abs(1.0-max);
 	}
 }
