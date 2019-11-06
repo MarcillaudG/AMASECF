@@ -129,7 +129,8 @@ public class RowAgent extends AgentLearning{
 		sum = sum / this.row.values().size();
 		// In case of need of global criticality
 		if(max == 1.0 && countNbMax >1) {
-			boolean sncSolve = false;for(String data : this.row.keySet()) {
+			boolean sncSolve = false;
+			for(String data : this.row.keySet()) {
 				RequestForWeight requestToSend = new RequestForWeight(0, this.name, 0, null, "ROW");
 				if(this.row.get(data)==max) {
 					if(!sncSolve) {
