@@ -31,6 +31,7 @@ import fr.irit.smac.learningdata.requests.Request;
 import fr.irit.smac.learningdata.requests.RequestForRow;
 import fr.irit.smac.learningdata.requests.RequestForWeight;
 import fr.irit.smac.learningdata.requests.RequestRow;
+import fr.irit.smac.learningdata.ui.Matrix;
 import fr.irit.smac.lxplot.LxPlot;
 import fr.irit.smac.modelui.learning.DataLearningModel;
 import fr.irit.smac.modelui.learning.InputLearningModel;
@@ -80,6 +81,7 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	private FileWriter file;
 
+	private Matrix matrix;
 
 	private String name;
 	private double feedback;
@@ -371,6 +373,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 
 	@Override
 	protected void onAct() {
+		
+		
+		
 		this.amas.setValueOfVariableNonDegraded(this);
 		List<Integer> inputs = new ArrayList<Integer>();
 		Double res =0.0;
@@ -397,6 +402,9 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
 		}
+		
+		updateMatrix();
+		
 		//TEST
 		/*for(InputAgent input : this.allInputAgent.values()) {
 			String nameOfCorrect = this.amas.getNameOfCorrectDataForInput(input.getId(), this.name);
@@ -405,14 +413,14 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 		System.out.println("RESULT :   "+this.function.computeCustom()+"          "+this.amas.getResultOracle(this.name));*/
 		System.out.println("Feedback : "+ this.feedback);
 		LxPlot.getChart("Feedback").add("Difference",this.getCycle(), Math.abs(res-this.amas.getResultOracle(this.name)));
-		for(InputAgent input : this.allInputAgent.values()) {
+		/*for(InputAgent input : this.allInputAgent.values()) {
 			for(DataAgent data : this.allDataAgent.values()) {
 				double critInput = this.allRowAgent.get(input).getCriticalityAfterUpdate(data.getName(), Operator.NONE);
 				double critData = this.allColumnAgent.get(data).getCriticalityAfterUpdate(input.getName(),Operator.NONE);
 				LxPlot.getChart(input.getName() + " and "+data.getName()).add("CritInput", this.getCycle(), critInput);
 				LxPlot.getChart(input.getName() + " and "+data.getName()).add("CritData", this.getCycle(), critData);
 			}
-		}
+		}*/
 
 
 		try {
@@ -446,6 +454,35 @@ public class LearningFunction extends Agent<AmasLearning, EnvironmentLearning>{
 			//Don't forget to close the DB connection
 			connection.close();
 
+		}
+	}
+
+	private void updateMatrix() {
+		System.out.println("UPDATE");
+		String[] head = new String[this.allDataAgent.keySet().size()+1];
+		head[0] = "";
+		int i = 1;
+		for(String s : this.allDataAgent.keySet()) {
+			head[i] = s;
+			i++;
+		}
+		Object[][] donnees = new Object[this.allInputAgent.keySet().size()+1][this.allDataAgent.keySet().size()+1];
+		i = 0;
+		for(String inp : this.allInputAgent.keySet()) {
+			donnees[i][0] = inp +":"+ this.amas.getNameOfInputFormula(this.allInputAgent.get(inp).getId(), this.name);
+			int j = 1;
+			for(String dat : this.allDataAgent.keySet()) {
+				donnees[i][j] = this.currentConfig.getDataValueForInput(inp, dat);
+				j++;
+			}
+			i++;
+		}
+		if(this.matrix == null) {
+			this.matrix = new Matrix(head, donnees);
+			this.matrix.setVisible(true);
+		}
+		else {
+			this.matrix.updateTable(head, donnees);
 		}
 	}
 

@@ -38,9 +38,9 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 		
 		
 		String name = "Function1";
-		this.oracles.put(name, this.environment.generateFunction(name, 5));
+		this.oracles.put(name, this.environment.generateFunction(name, 10));
 		this.environment.printAllVariables();
-		LearningFunction lfun = new LearningFunction(this, params,name,this.degradeFunction(name,3));
+		LearningFunction lfun = new LearningFunction(this, params,name,this.degradeFunction(name,7));
 		for(String input : lfun.getInputsName()) {
 			
 		}
@@ -105,6 +105,9 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 		
 	}
 
+	public String getNameOfInputFormula(int idInput,String nameOfFunction) {
+		return this.oracles.get(nameOfFunction).getInput(idInput).getOperator().toString();
+	}
 
 	public void generateNewValues() {
 		this.environment.generateNewValues();
