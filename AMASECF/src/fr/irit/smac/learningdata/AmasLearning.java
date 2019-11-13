@@ -110,7 +110,11 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 	}
 
 	public void generateNewValues() {
-		this.environment.generateNewValues();
+		this.environment.generateNewValues(this.cycle);
+	}
+	
+	public double getValueOfVariable(String var, int cycle) {
+		return this.environment.getValueOfVariable(var, cycle);
 	}
 
 	@Override
@@ -128,6 +132,14 @@ public class AmasLearning extends Amas<EnvironmentLearning>{
 				lf.getFunction().setValueOfOperand(i,this.getValueOfVariable(lf.getFunction().getInput(i).getOperand()));
 			}
 		}
+	}
+
+
+	public void setupOraclePastValues(String name, int cycle) {
+		for(Input inp : this.oracles.get(name).getAllInput()) {
+			this.oracles.get(name).setValueOfOperand(inp.getId(), this.environment.getValueOfVariable(inp.getOperand(), cycle));
+		}
+		
 	}
 
 

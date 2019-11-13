@@ -73,5 +73,10 @@ public class Configuration {
 	public Double getDataValueForInput(String input,String data) {
 		return this.config.get(input).get(data);
 	}
+
+	@Override
+	public String toString() {
+		return "Configuration [config=" + config + ", cycle=" + cycle + ", id=" + id + "]";
+	}
 	
 }

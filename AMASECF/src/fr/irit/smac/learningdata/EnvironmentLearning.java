@@ -1,6 +1,8 @@
 package fr.irit.smac.learningdata;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import fr.irit.smac.amak.Environment;
 import fr.irit.smac.amak.Scheduling;
@@ -10,6 +12,8 @@ import fr.irit.smac.shield.c2av.SyntheticFunction;
 public class EnvironmentLearning extends Environment{
 
 	private ShieldUser shieldUser;
+	
+	private Map<Integer,Map<String,Double>> historic;
 
 	public EnvironmentLearning(Scheduling _scheduling, Object[] params) {
 		super(_scheduling, params);
@@ -30,6 +34,7 @@ public class EnvironmentLearning extends Environment{
 		this.shieldUser.generateAllFunctionsOfVariable();
 		
 		this.shieldUser.initGeneratorOfFunction();
+		this.historic = new TreeMap<Integer,Map<String,Double>>();
 		
 	}
 	
@@ -47,11 +52,25 @@ public class EnvironmentLearning extends Environment{
 		return this.shieldUser.getAllVariables();
 	}
 
-	public void generateNewValues() {
+	public void generateNewValues(int cycle) {
+		this.historic.put(cycle-1, new TreeMap<String,Double>());
+		for(String s : this.shieldUser.getAllVariables()) {
+			this.historic.get(cycle-1).put(s, this.shieldUser.getValueOfVariable(s)-100);
+		}
+		/*System.out.println("ENV");
+		for(String str : this.shieldUser.getAllVariables()){
+			System.out.println(str+":"+this.shieldUser.getValueOfVariable(str));
+		}*/
 		this.shieldUser.nextCycle();
+		/*System.out.println("HISt");
+		System.out.println(this.historic);*/
 		
 	}
 
+	public double getValueOfVariable(String var, int cycle) {
+		return this.historic.get(cycle-1).get(var);
+	}
+	
 	public void printAllVariables() {
 		// TODO Auto-generated method stub
 		
